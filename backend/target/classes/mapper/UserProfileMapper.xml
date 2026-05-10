@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.anti.mapper.UserProfileMapper">
+
+    <select id="selectByUserId" resultType="com.anti.entity.UserProfile">
+        SELECT id, user_id, grade, major, knowledge_level, weak_points, interest_tags,
+               lifecycle_stage, browse_count, register_days, update_time
+        FROM user_profile
+        WHERE user_id = #{userId}
+    </select>
+
+    <insert id="initProfile">
+        INSERT INTO user_profile (user_id, grade, major, knowledge_level, browse_count, register_days, lifecycle_stage)
+        SELECT u.id, u.grade, u.major, 0, 0, 0, 'newbie'
+        FROM sys_user u
+        WHERE u.id = #{userId}
+        AND NOT EXISTS (SELECT 1 FROM user_profile WHERE user_id = #{userId})
+    </insert>
+
+</mapper>

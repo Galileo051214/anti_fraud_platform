@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.anti.mapper.ForumPostMapper">
+
+    <select id="selectByTypeOrderByTime" resultType="com.anti.entity.ForumPost">
+        SELECT fp.*, u.nickname as author_name, u.avatar as author_avatar
+        FROM forum_post fp
+        LEFT JOIN sys_user u ON fp.user_id = u.id
+        WHERE fp.status = 1
+        <if test="postType != null and postType != ''">
+            AND fp.post_type = #{postType}
+        </if>
+        ORDER BY fp.is_top DESC, fp.create_time DESC
+    </select>
+
+    <select id="selectByTypeOrderByLike" resultType="com.anti.entity.ForumPost">
+        SELECT fp.*, u.nickname as author_name, u.avatar as author_avatar
+        FROM forum_post fp
+        LEFT JOIN sys_user u ON fp.user_id = u.id
+        WHERE fp.status = 1
+        <if test="postType != null and postType != ''">
+            AND fp.post_type = #{postType}
+        </if>
+        ORDER BY fp.is_top DESC, fp.like_count DESC, fp.create_time DESC
+    </select>
+
+    <select id="selectByTypeOrderByComment" resultType="com.anti.entity.ForumPost">
+        SELECT fp.*, u.nickname as author_name, u.avatar as author_avatar
+        FROM forum_post fp
+        LEFT JOIN sys_user u ON fp.user_id = u.id
+        WHERE fp.status = 1
+        <if test="postType != null and postType != ''">
+            AND fp.post_type = #{postType}
+        </if>
+        ORDER BY fp.is_top DESC, fp.comment_count DESC, fp.create_time DESC
+    </select>
+
+    <select id="searchByKeyword" resultType="com.anti.entity.ForumPost">
+        SELECT fp.*, u.nickname as author_name, u.avatar as author_avatar
+        FROM forum_post fp
+        LEFT JOIN sys_user u ON fp.user_id = u.id
+        WHERE fp.status = 1
+        AND (fp.title LIKE CONCAT('%', #{keyword}, '%')
+             OR fp.content LIKE CONCAT('%', #{keyword}, '%'))
+        ORDER BY fp.is_featured DESC, fp.create_time DESC
+    </select>
+
+</mapper>

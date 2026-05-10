@@ -1,0 +1,29 @@
+# 应用配置
+spring:
+  application:
+    name: anti-fraud-platform
+  profiles:
+    active: dev # 默认开发环境，可选: dev, prod
+
+# 服务端口
+server:
+  port: 8080
+
+# MyBatis Plus配置
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.anti.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# 分页插件配置
+page:
+  pageSize: 10
+  pageNum: 1

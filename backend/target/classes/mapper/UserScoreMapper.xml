@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.anti.mapper.UserScoreMapper">
+
+    <select id="selectByUserId" resultType="com.anti.entity.UserScore">
+        SELECT id, user_id, total_score, current_level, weekly_score, update_time
+        FROM user_score
+        WHERE user_id = #{userId}
+    </select>
+
+    <update id="updateScore">
+        UPDATE user_score
+        SET total_score = total_score + #{addScore},
+            weekly_score = weekly_score + #{addScore},
+            update_time = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+</mapper>

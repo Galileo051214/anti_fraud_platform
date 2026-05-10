@@ -1,0 +1,57 @@
+# 开发环境配置
+spring:
+  # 数据库配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/anti_fraud_platform?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+
+  # Redis配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 123456
+      database: 0
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# JWT配置
+jwt:
+  secret: anti-fraud-platform-secret-key-2024-must-be-at-least-256-bits-long
+  expiration: 86400000 # 24小时
+  header: Authorization
+  prefix: "Bearer "
+
+# 日志配置
+logging:
+  level:
+    com.anti: debug
+    com.anti.mapper: debug
+
+# Springdoc Swagger配置
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+
+# DeepSeek API配置
+deepseek:
+  api-url: https://api.deepseek.com/chat/completions
+  api-key: 填自己的apikey
+  model: deepseek-chat
+  max-tokens: 2048
+  temperature: 0.7

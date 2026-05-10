@@ -1,0 +1,72 @@
+:root {
+  --primary-color: #409eff;
+  --success-color: #67c23a;
+  --warning-color: #e6a23c;
+  --danger-color: #f56c6c;
+  --info-color: #909399;
+
+  --text-color-primary: #303133;
+  --text-color-regular: #606266;
+  --text-color-secondary: #909399;
+  --text-color-placeholder: #c0c4cc;
+
+  --border-color-base: #dcdfe6;
+  --border-color-light: #e4e7ed;
+  --border-color-lighter: #ebeef5;
+  --border-color-extra-light: #f2f6fc;
+
+  --background-color-base: #f5f7fa;
+  --background-dark: #1a1a2e;
+  --background-light: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: var(--text-color-primary);
+  background-color: var(--background-color-base);
+}
+
+a {
+  text-decoration: none;
+  color: var(--primary-color);
+}
+
+ul, ol {
+  list-style: none;
+}
+
+input, button, textarea {
+  font-family: inherit;
+}
+
+.page-container {
+  padding: 20px;
+}
+
+.card-container {
+  background: var(--background-light);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+
+  .page-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-color-primary);
+  }
+}
