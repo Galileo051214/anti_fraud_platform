@@ -4,9 +4,7 @@
       <div class="login-card">
         <div class="login-card__header">
           <div class="login-card__logo">
-            <svg class="login-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
+            <IconShield :size="34" />
           </div>
           <h1 class="login-card__title">反诈骗学习平台</h1>
           <p class="login-card__subtitle">守护校园安全，提升防骗意识</p>
@@ -19,7 +17,7 @@
           @submit.prevent="handleLogin"
           class="login-card__form"
         >
-      <el-form-item prop="username" class="login-card__item">
+          <el-form-item prop="username" class="login-card__item">
             <el-input
               v-model="form.username"
               placeholder="请输入用户名"
@@ -78,6 +76,7 @@ import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { User, Lock } from '@element-plus/icons-vue'
+import { IconShield } from '@/components/icons'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 
@@ -147,58 +146,156 @@ const handleLogin = async () => {
 
 <style scoped lang="scss">
 .login-page {
+  --auth-ink: #0a0a0b;
+  --auth-muted: #5f6368;
+  --auth-line: rgba(12, 14, 18, 0.1);
+  --auth-soft: rgba(255, 255, 255, 0.72);
+  --auth-glass: rgba(255, 255, 255, 0.58);
+
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, hsl(225, 60%, 55%) 0%, hsl(270, 50%, 45%) 100%);
-  padding: 20px;
+  padding: 32px 20px;
+  overflow: hidden;
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.96), rgba(245, 247, 250, 0.9) 48%, rgba(255, 255, 255, 0.98)),
+    repeating-linear-gradient(90deg, rgba(10, 10, 11, 0.045) 0 1px, transparent 1px 72px),
+    repeating-linear-gradient(0deg, rgba(10, 10, 11, 0.04) 0 1px, transparent 1px 72px);
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  &::before {
+    inset: 0;
+    background:
+      linear-gradient(115deg, transparent 0 18%, rgba(12, 14, 18, 0.06) 18% 18.5%, transparent 18.5% 54%, rgba(117, 137, 166, 0.13) 54% 54.7%, transparent 54.7%),
+      linear-gradient(165deg, rgba(255, 255, 255, 0.82), transparent 42%);
+  }
+
+  &::after {
+    inset: 10% 8% auto auto;
+    width: min(52vw, 620px);
+    height: min(42vw, 480px);
+    border-radius: 36px;
+    border: 1px solid rgba(255, 255, 255, 0.68);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.14)),
+      linear-gradient(90deg, rgba(12, 14, 18, 0.05), transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(1.18);
+    backdrop-filter: blur(18px) saturate(1.18);
+    box-shadow:
+      0 24px 80px rgba(15, 23, 42, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    transform: rotate(-8deg);
+  }
 }
 
 .login-wrapper {
   position: relative;
+  z-index: 1;
   width: 100%;
-  max-width: 420px;
+  max-width: 430px;
 }
 
 .login-card {
-  background: #fff;
-  border-radius: 16px;
-  padding: 40px;
-  box-shadow: 0 8px 32px hsla(0, 0, 0, 0.15);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 30px;
+  padding: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.5) 48%, rgba(245, 247, 250, 0.64)),
+    var(--auth-glass);
+  -webkit-backdrop-filter: blur(24px) saturate(1.24);
+  backdrop-filter: blur(24px) saturate(1.24);
+  box-shadow:
+    0 24px 80px rgba(15, 23, 42, 0.16),
+    0 2px 10px rgba(15, 23, 42, 0.06),
+    inset 0 1px 1px rgba(255, 255, 255, 0.96),
+    inset 0 -1px 1px rgba(15, 23, 42, 0.08);
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    border-radius: inherit;
+    z-index: -1;
+  }
+
+  &::before {
+    inset: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.42);
+    box-shadow:
+      inset 0 12px 22px rgba(255, 255, 255, 0.46),
+      inset 0 -18px 28px rgba(12, 14, 18, 0.06);
+  }
+
+  &::after {
+    top: -28%;
+    right: -18%;
+    width: 68%;
+    height: 54%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0) 64%);
+    filter: blur(18px);
+    opacity: 0.86;
+    transform: rotate(18deg);
+  }
 
   &__header {
     text-align: center;
-    margin-bottom: 32px;
+    margin-bottom: 34px;
   }
 
   &__logo {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 64px;
-    height: 64px;
-    background: linear-gradient(135deg, hsl(225, 60%, 55%), hsl(270, 50%, 45%));
-    border-radius: 16px;
-    margin-bottom: 16px;
-  }
+    width: 68px;
+    height: 68px;
+    color: var(--auth-ink);
+    border-radius: 22px;
+    margin-bottom: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(245, 247, 250, 0.62)),
+      rgba(255, 255, 255, 0.52);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    box-shadow:
+      0 14px 34px rgba(15, 23, 42, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.96),
+      inset 0 -1px 0 rgba(12, 14, 18, 0.08);
+    transition: transform 260ms ease, box-shadow 260ms ease;
 
-  &__icon {
-    width: 32px;
-    height: 32px;
-    color: #fff;
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow:
+        0 18px 42px rgba(15, 23, 42, 0.14),
+        inset 0 1px 0 rgba(255, 255, 255, 0.96),
+        inset 0 -1px 0 rgba(12, 14, 18, 0.08);
+    }
   }
 
   &__title {
-    font-size: 24px;
-    font-weight: 600;
-    color: hsl(220, 10%, 20%);
+    font-size: 25px;
+    font-weight: 700;
+    color: var(--auth-ink);
     margin: 0 0 8px;
   }
 
   &__subtitle {
     font-size: 14px;
-    color: hsl(220, 10%, 55%);
+    color: var(--auth-muted);
     margin: 0;
   }
 
@@ -213,127 +310,179 @@ const handleLogin = async () => {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      margin-bottom: 22px;
     }
   }
 
   &__input {
     :deep(.el-input__wrapper) {
+      min-height: 50px;
       padding: 4px 16px;
-      border-radius: 8px;
-      box-shadow: 0 0 0 1px hsl(220, 10%, 85%) inset;
-      transition: box-shadow 0.2s ease;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.64);
+      -webkit-backdrop-filter: blur(12px) saturate(1.12);
+      backdrop-filter: blur(12px) saturate(1.12);
+      box-shadow:
+        0 0 0 1px var(--auth-line) inset,
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      transition: transform 220ms ease, box-shadow 220ms ease, background-color 220ms ease;
 
       &:hover {
-        box-shadow: 0 0 0 1px hsl(225, 60%, 55%) inset;
+        background: rgba(255, 255, 255, 0.78);
+        box-shadow:
+          0 8px 24px rgba(15, 23, 42, 0.08),
+          0 0 0 1px rgba(12, 14, 18, 0.18) inset,
+          inset 0 1px 0 rgba(255, 255, 255, 0.92);
       }
 
       &.is-focus {
-        box-shadow: 0 0 0 2px hsla(225, 60%, 55%, 0.2), 0 0 0 1px hsl(225, 60%, 55%) inset;
+        background: rgba(255, 255, 255, 0.88);
+        transform: translateY(-1px);
+        box-shadow:
+          0 12px 28px rgba(15, 23, 42, 0.1),
+          0 0 0 2px rgba(10, 10, 11, 0.08),
+          0 0 0 1px rgba(10, 10, 11, 0.36) inset,
+          inset 0 1px 0 rgba(255, 255, 255, 0.96);
       }
+    }
+
+    :deep(.el-input__inner) {
+      color: var(--auth-ink);
+      font-weight: 500;
+    }
+
+    :deep(.el-input__prefix) {
+      color: rgba(10, 10, 11, 0.72);
     }
   }
 
   &__btn {
     width: 100%;
-    height: 48px;
+    height: 50px;
     font-size: 16px;
-    font-weight: 500;
-    border-radius: 8px;
-    background: linear-gradient(135deg, hsl(225, 60%, 55%), hsl(270, 50%, 45%));
-    border: none;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    font-weight: 700;
+    border-radius: 999px;
+    border: 1px solid rgba(10, 10, 11, 0.88);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0)),
+      #0a0a0b;
+    box-shadow:
+      0 16px 36px rgba(10, 10, 11, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    transition: transform 220ms ease, box-shadow 220ms ease, background-color 220ms ease;
 
     &:hover:not(:disabled) {
       transform: translateY(-1px);
-      box-shadow: 0 4px 16px hsla(225, 60%, 55%, 0.4);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)),
+        #161719;
+      box-shadow:
+        0 20px 44px rgba(10, 10, 11, 0.26),
+        inset 0 1px 0 rgba(255, 255, 255, 0.24);
     }
 
     &:active:not(:disabled) {
-      transform: translateY(0);
+      transform: translateY(1px) scale(0.99);
+      box-shadow:
+        0 10px 24px rgba(10, 10, 11, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18);
     }
   }
 
   &__forgot {
     font-size: 14px;
-    color: hsl(220, 10%, 55%);
+    color: var(--auth-muted);
     cursor: pointer;
-    transition: color 0.2s ease;
+    transition: color 200ms ease;
 
     &:hover {
-      color: hsl(225, 60%, 55%);
+      color: var(--auth-ink);
     }
   }
 
   &__footer {
     text-align: center;
     margin-top: 24px;
-    padding-top: 24px;
-    border-top: 1px solid hsl(220, 10%, 92%);
+    padding-top: 22px;
+    border-top: 1px solid rgba(12, 14, 18, 0.08);
   }
 
   &__tip {
     font-size: 14px;
-    color: hsl(220, 10%, 55%);
+    color: var(--auth-muted);
   }
 
   &__link {
     font-size: 14px;
-    color: hsl(225, 60%, 55%);
+    color: var(--auth-ink);
+    font-weight: 700;
     margin-left: 4px;
     text-decoration: none;
-    transition: color 0.2s ease;
+    transition: opacity 200ms ease;
 
     &:hover {
-      color: hsl(270, 50%, 45%);
+      opacity: 0.72;
       text-decoration: underline;
     }
+  }
+
+  :deep(.el-checkbox__label) {
+    color: var(--auth-muted);
+  }
+
+  :deep(.el-checkbox__inner) {
+    border-radius: 6px;
+    border-color: rgba(10, 10, 11, 0.32);
+    background: rgba(255, 255, 255, 0.72);
+  }
+
+  :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+    border-color: var(--auth-ink);
+    background: var(--auth-ink);
+  }
+
+  :deep(.el-checkbox__input.is-checked + .el-checkbox__label) {
+    color: var(--auth-ink);
   }
 }
 
 .login-decoration {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  overflow: hidden;
-  z-index: 0;
+  display: none;
+}
 
-  &__circle {
-    position: absolute;
-    border-radius: 50%;
-    background: hsla(0, 0%, 100%, 0.1);
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .login-card,
+  .login-card__logo,
+  .login-card__input :deep(.el-input__wrapper) {
+    background: rgba(255, 255, 255, 0.96);
+  }
+}
 
-    &--1 {
-      width: 300px;
-      height: 300px;
-      top: -100px;
-      right: -100px;
-    }
-
-    &--2 {
-      width: 200px;
-      height: 200px;
-      bottom: 10%;
-      left: -80px;
-    }
-
-    &--3 {
-      width: 150px;
-      height: 150px;
-      bottom: -50px;
-      right: 20%;
-    }
+@media (prefers-reduced-motion: reduce) {
+  .login-card__logo,
+  .login-card__input :deep(.el-input__wrapper),
+  .login-card__btn,
+  .login-card__forgot,
+  .login-card__link {
+    transition: none;
   }
 }
 
 @media (max-width: 480px) {
+  .login-page {
+    padding: 20px 14px;
+
+    &::after {
+      display: none;
+    }
+  }
+
   .login-card {
-    padding: 32px 24px;
+    border-radius: 24px;
+    padding: 32px 22px;
 
     &__title {
-      font-size: 20px;
+      font-size: 22px;
     }
   }
 }

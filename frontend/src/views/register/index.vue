@@ -4,12 +4,7 @@
       <div class="register-card">
         <div class="register-card__header">
           <div class="register-card__logo">
-            <svg class="register-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <line x1="19" y1="8" x2="19" y2="14"/>
-              <line x1="22" y1="11" x2="16" y2="11"/>
-            </svg>
+            <el-icon class="register-card__icon"><UserFilled /></el-icon>
           </div>
           <h1 class="register-card__title">用户注册</h1>
           <p class="register-card__subtitle">加入反诈骗学习平台</p>
@@ -81,10 +76,11 @@
             </el-form-item>
           </div>
 
-          <el-form-item prop="nickname" class="register-card__item">
-            <template #label>
-              <span class="register-card__label">昵称</span>
-            </template>
+          <div class="register-card__row register-card__row--three">
+            <el-form-item prop="nickname" class="register-card__item">
+              <template #label>
+                <span class="register-card__label">昵称</span>
+              </template>
               <el-input
                 v-model="form.nickname"
                 placeholder="选填，用于展示"
@@ -92,9 +88,8 @@
                 maxlength="50"
                 :prefix-icon="UserFilled"
               />
-          </el-form-item>
+            </el-form-item>
 
-          <div class="register-card__row">
             <el-form-item prop="phone" class="register-card__item">
               <template #label>
                 <span class="register-card__label">手机号</span>
@@ -298,60 +293,159 @@ const handleRegister = async () => {
 
 <style scoped lang="scss">
 .register-page {
+  --auth-ink: #0a0a0b;
+  --auth-muted: #5f6368;
+  --auth-line: rgba(12, 14, 18, 0.1);
+  --auth-glass: rgba(255, 255, 255, 0.6);
+  --auth-danger: #d92d20;
+
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, hsl(225, 60%, 55%) 0%, hsl(270, 50%, 45%) 100%);
-  padding: 40px 20px;
+  padding: 24px 20px;
+  overflow: hidden;
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.97), rgba(245, 247, 250, 0.91) 46%, rgba(255, 255, 255, 0.98)),
+    repeating-linear-gradient(90deg, rgba(10, 10, 11, 0.045) 0 1px, transparent 1px 72px),
+    repeating-linear-gradient(0deg, rgba(10, 10, 11, 0.04) 0 1px, transparent 1px 72px);
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  &::before {
+    inset: 0;
+    background:
+      linear-gradient(64deg, transparent 0 22%, rgba(12, 14, 18, 0.055) 22% 22.6%, transparent 22.6% 68%, rgba(117, 137, 166, 0.12) 68% 68.7%, transparent 68.7%),
+      linear-gradient(170deg, rgba(255, 255, 255, 0.84), transparent 46%);
+  }
+
+  &::after {
+    inset: auto auto 8% 5%;
+    width: min(56vw, 680px);
+    height: min(44vw, 500px);
+    border-radius: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.68);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.56), rgba(255, 255, 255, 0.16)),
+      linear-gradient(90deg, rgba(12, 14, 18, 0.05), transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(1.18);
+    backdrop-filter: blur(18px) saturate(1.18);
+    box-shadow:
+      0 24px 80px rgba(15, 23, 42, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    transform: rotate(7deg);
+  }
 }
 
 .register-wrapper {
   position: relative;
+  z-index: 1;
   width: 100%;
-  max-width: 560px;
+  max-width: 780px;
 }
 
 .register-card {
-  background: #fff;
-  border-radius: 16px;
-  padding: 40px;
-  box-shadow: 0 8px 32px hsla(0, 0, 0, 0.15);
-  max-height: 90vh;
-  overflow-y: auto;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 30px;
+  padding: 30px 40px 26px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.5) 48%, rgba(245, 247, 250, 0.64)),
+    var(--auth-glass);
+  -webkit-backdrop-filter: blur(24px) saturate(1.24);
+  backdrop-filter: blur(24px) saturate(1.24);
+  box-shadow:
+    0 24px 80px rgba(15, 23, 42, 0.16),
+    0 2px 10px rgba(15, 23, 42, 0.06),
+    inset 0 1px 1px rgba(255, 255, 255, 0.96),
+    inset 0 -1px 1px rgba(15, 23, 42, 0.08);
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    border-radius: inherit;
+    z-index: -1;
+  }
+
+  &::before {
+    inset: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.42);
+    box-shadow:
+      inset 0 12px 22px rgba(255, 255, 255, 0.46),
+      inset 0 -18px 28px rgba(12, 14, 18, 0.06);
+  }
+
+  &::after {
+    top: -22%;
+    right: -14%;
+    width: 56%;
+    height: 42%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0) 64%);
+    filter: blur(18px);
+    opacity: 0.86;
+    transform: rotate(18deg);
+  }
 
   &__header {
     text-align: center;
-    margin-bottom: 28px;
+    margin-bottom: 20px;
   }
 
   &__logo {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, hsl(225, 60%, 55%), hsl(270, 50%, 45%));
-    border-radius: 14px;
-    margin-bottom: 14px;
+    width: 54px;
+    height: 54px;
+    color: var(--auth-ink);
+    border-radius: 19px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(245, 247, 250, 0.62)),
+      rgba(255, 255, 255, 0.52);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    box-shadow:
+      0 14px 34px rgba(15, 23, 42, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.96),
+      inset 0 -1px 0 rgba(12, 14, 18, 0.08);
+    transition: transform 260ms ease, box-shadow 260ms ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow:
+        0 18px 42px rgba(15, 23, 42, 0.14),
+        inset 0 1px 0 rgba(255, 255, 255, 0.96),
+        inset 0 -1px 0 rgba(12, 14, 18, 0.08);
+    }
   }
 
   &__icon {
-    width: 28px;
-    height: 28px;
-    color: #fff;
+    font-size: 28px;
   }
 
   &__title {
-    font-size: 22px;
-    font-weight: 600;
-    color: hsl(220, 10%, 20%);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--auth-ink);
     margin: 0 0 6px;
   }
 
   &__subtitle {
-    font-size: 14px;
-    color: hsl(220, 10%, 55%);
+    font-size: 13px;
+    color: var(--auth-muted);
     margin: 0;
   }
 
@@ -362,14 +456,18 @@ const handleRegister = async () => {
   &__row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    gap: 14px;
+
+    &--three {
+      grid-template-columns: 1.15fr 1fr 1.15fr;
+    }
   }
 
   &__item {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
 
     &--btn {
-      margin-top: 8px;
+      margin-top: 4px;
       margin-bottom: 0;
     }
 
@@ -379,110 +477,176 @@ const handleRegister = async () => {
   }
 
   &__label {
-    font-size: 14px;
-    color: hsl(220, 10%, 30%);
-    font-weight: 500;
+    font-size: 13px;
+    color: rgba(10, 10, 11, 0.78);
+    font-weight: 600;
   }
 
   &__required {
-    color: hsl(0, 70%, 55%);
+    color: var(--auth-danger);
   }
 
   &__select {
     width: 100%;
   }
 
+  :deep(.el-input__wrapper),
+  :deep(.el-select__wrapper) {
+    min-height: 44px;
+    padding: 4px 16px;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.64);
+    -webkit-backdrop-filter: blur(12px) saturate(1.12);
+    backdrop-filter: blur(12px) saturate(1.12);
+    box-shadow:
+      0 0 0 1px var(--auth-line) inset,
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    transition: transform 220ms ease, box-shadow 220ms ease, background-color 220ms ease;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow:
+        0 8px 24px rgba(15, 23, 42, 0.08),
+        0 0 0 1px rgba(12, 14, 18, 0.18) inset,
+        inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    }
+
+    &.is-focus,
+    &.is-focused {
+      background: rgba(255, 255, 255, 0.88);
+      transform: translateY(-1px);
+      box-shadow:
+        0 12px 28px rgba(15, 23, 42, 0.1),
+        0 0 0 2px rgba(10, 10, 11, 0.08),
+        0 0 0 1px rgba(10, 10, 11, 0.36) inset,
+        inset 0 1px 0 rgba(255, 255, 255, 0.96);
+    }
+  }
+
+  :deep(.el-input__inner),
+  :deep(.el-select__placeholder),
+  :deep(.el-select__selected-item) {
+    color: var(--auth-ink);
+    font-weight: 500;
+  }
+
+  :deep(.el-input__prefix),
+  :deep(.el-select__prefix),
+  :deep(.el-select__suffix) {
+    color: rgba(10, 10, 11, 0.72);
+  }
+
   &__btn {
     width: 100%;
     height: 48px;
     font-size: 16px;
-    font-weight: 500;
-    border-radius: 8px;
-    background: linear-gradient(135deg, hsl(225, 60%, 55%), hsl(270, 50%, 45%));
-    border: none;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    font-weight: 700;
+    border-radius: 999px;
+    border: 1px solid rgba(10, 10, 11, 0.88);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0)),
+      #0a0a0b;
+    box-shadow:
+      0 16px 36px rgba(10, 10, 11, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    transition: transform 220ms ease, box-shadow 220ms ease, background-color 220ms ease;
 
     &:hover:not(:disabled) {
       transform: translateY(-1px);
-      box-shadow: 0 4px 16px hsla(225, 60%, 55%, 0.4);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)),
+        #161719;
+      box-shadow:
+        0 20px 44px rgba(10, 10, 11, 0.26),
+        inset 0 1px 0 rgba(255, 255, 255, 0.24);
     }
 
     &:active:not(:disabled) {
-      transform: translateY(0);
+      transform: translateY(1px) scale(0.99);
+      box-shadow:
+        0 10px 24px rgba(10, 10, 11, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18);
     }
   }
 
   &__footer {
     text-align: center;
-    margin-top: 24px;
-    padding-top: 24px;
-    border-top: 1px solid hsl(220, 10%, 92%);
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(12, 14, 18, 0.08);
   }
 
   &__tip {
     font-size: 14px;
-    color: hsl(220, 10%, 55%);
+    color: var(--auth-muted);
   }
 
   &__link {
     font-size: 14px;
-    color: hsl(225, 60%, 55%);
+    color: var(--auth-ink);
+    font-weight: 700;
     margin-left: 4px;
     text-decoration: none;
-    transition: color 0.2s ease;
+    transition: opacity 200ms ease;
 
     &:hover {
-      color: hsl(270, 50%, 45%);
+      opacity: 0.72;
       text-decoration: underline;
     }
+  }
+
+  :deep(.el-form-item__error) {
+    color: var(--auth-danger);
+    padding-top: 5px;
   }
 }
 
 .register-decoration {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  overflow: hidden;
-  z-index: 0;
+  display: none;
+}
 
-  &__circle {
-    position: absolute;
-    border-radius: 50%;
-    background: hsla(0, 0%, 100%, 0.1);
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .register-card,
+  .register-card__logo,
+  .register-card :deep(.el-input__wrapper),
+  .register-card :deep(.el-select__wrapper) {
+    background: rgba(255, 255, 255, 0.96);
+  }
+}
 
-    &--1 {
-      width: 250px;
-      height: 250px;
-      top: -80px;
-      left: -80px;
-    }
-
-    &--2 {
-      width: 180px;
-      height: 180px;
-      bottom: 5%;
-      right: -60px;
-    }
-
-    &--3 {
-      width: 120px;
-      height: 120px;
-      top: 20%;
-      right: 10%;
-    }
+@media (prefers-reduced-motion: reduce) {
+  .register-card__logo,
+  .register-card :deep(.el-input__wrapper),
+  .register-card :deep(.el-select__wrapper),
+  .register-card__btn,
+  .register-card__link {
+    transition: none;
   }
 }
 
 @media (max-width: 640px) {
+  .register-page {
+    padding: 20px 14px;
+    align-items: flex-start;
+    overflow-y: auto;
+
+    &::after {
+      display: none;
+    }
+  }
+
   .register-card {
-    padding: 28px 20px;
+    overflow: visible;
+    border-radius: 24px;
+    padding: 28px 20px 24px;
 
     &__row {
       grid-template-columns: 1fr;
       gap: 0;
+    }
+
+    &__title {
+      font-size: 22px;
     }
   }
 }
