@@ -200,7 +200,7 @@
     <el-dialog
       v-model="dialogVisible"
       :title="isEdit ? '编辑关卡' : '新增关卡'"
-      width="800px"
+      width="min(1280px, 96vw)"
       destroy-on-close
       :close-on-click-modal="false"
     >

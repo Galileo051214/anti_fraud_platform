@@ -142,7 +142,9 @@ public class ScenarioServiceImpl implements ScenarioService {
         record.setNodeId(request.getCurrentNode());
         record.setEdgeId(selectedEdge.getFrom() + "_" + selectedEdge.getTo());
         record.setChoiceLabel(selectedEdge.getLabel());
-        record.setIsSafeChoice(selectedEdge.getIsSafeChoice());
+        String scoreType = normalizeScoreType(selectedEdge);
+        record.setScoreType(scoreType);
+        record.setIsSafeChoice(isSafeScore(scoreType) ? Boolean.TRUE : isRiskScore(scoreType) ? Boolean.FALSE : null);
         record.setTimestamp(LocalDateTime.now().toString());
         history.add(record);
 
@@ -159,17 +161,21 @@ public class ScenarioServiceImpl implements ScenarioService {
         int finalScore = 0;
         boolean passed = false;
         int safeChoices = 0;
+        int scoredChoices = 0;
         int awardedScore = 0;
 
         if (scenarioEnded) {
-            int totalChoices = history.size();
             for (ScenarioProgress.DecisionRecord r : history) {
-                if (r.getIsSafeChoice() != null && r.getIsSafeChoice()) {
+                String recordScoreType = normalizeScoreType(r);
+                if (isSafeScore(recordScoreType)) {
                     safeChoices++;
+                }
+                if (isScoredChoice(recordScoreType)) {
+                    scoredChoices++;
                 }
             }
 
-            finalScore = totalChoices > 0 ? (int) (100.0 * safeChoices / totalChoices) : 0;
+            finalScore = scoredChoices > 0 ? (int) (100.0 * safeChoices / scoredChoices) : 100;
             progress.setFinalScore(finalScore);
 
             int passingScore = challenge.getPassingScore() != null ? challenge.getPassingScore() : 60;
@@ -288,8 +294,11 @@ public class ScenarioServiceImpl implements ScenarioService {
                 nodeVO.setContent(currentNodeData.getContent());
                 nodeVO.setRole(currentNodeData.getRole());
                 nodeVO.setRiskTip(currentNodeData.getRiskTip());
+                nodeVO.setPosition(currentNodeData.getPosition());
                 vo.setCurrentNodeDetail(nodeVO);
             }
+
+            vo.setScript(buildFlowScriptForClient(script, progress));
 
             if ("in_progress".equals(progress.getStatus())) {
                 List<Challenge.ScenarioScript.ScenarioEdge> edges = script.getEdges() != null ? script.getEdges() : Collections.emptyList();
@@ -311,6 +320,42 @@ public class ScenarioServiceImpl implements ScenarioService {
         }
 
         return vo;
+    }
+
+    private Challenge.ScenarioScript buildFlowScriptForClient(Challenge.ScenarioScript source, ScenarioProgress progress) {
+        Challenge.ScenarioScript copy = new Challenge.ScenarioScript();
+        copy.setName(source.getName());
+        copy.setDescription(source.getDescription());
+        copy.setStartNodeId(source.getStartNodeId());
+        copy.setEndNodeIds(source.getEndNodeIds() == null ? Collections.emptyList() : new ArrayList<>(source.getEndNodeIds()));
+
+        List<Challenge.ScenarioScript.ScenarioNode> nodes = new ArrayList<>();
+        for (Challenge.ScenarioScript.ScenarioNode sourceNode : safeList(source.getNodes())) {
+            Challenge.ScenarioScript.ScenarioNode node = new Challenge.ScenarioScript.ScenarioNode();
+            node.setId(sourceNode.getId());
+            node.setType(sourceNode.getType());
+            node.setTitle(sourceNode.getTitle());
+            node.setRole(sourceNode.getRole());
+            node.setRiskTip(sourceNode.getRiskTip());
+            node.setPosition(sourceNode.getPosition());
+            node.setContent(Objects.equals(sourceNode.getId(), progress.getCurrentNode()) ? sourceNode.getContent() : "");
+            nodes.add(node);
+        }
+        copy.setNodes(nodes);
+
+        List<Challenge.ScenarioScript.ScenarioEdge> edges = new ArrayList<>();
+        for (Challenge.ScenarioScript.ScenarioEdge sourceEdge : safeList(source.getEdges())) {
+            Challenge.ScenarioScript.ScenarioEdge edge = new Challenge.ScenarioScript.ScenarioEdge();
+            edge.setFrom(sourceEdge.getFrom());
+            edge.setTo(sourceEdge.getTo());
+            edge.setCondition(sourceEdge.getCondition());
+            edge.setLabel(sourceEdge.getLabel());
+            edge.setScoreType(null);
+            edge.setIsSafeChoice(null);
+            edges.add(edge);
+        }
+        copy.setEdges(edges);
+        return copy;
     }
 
     private void requireUser(Long userId) {
@@ -412,6 +457,9 @@ public class ScenarioServiceImpl implements ScenarioService {
             if (edge.getLabel() == null || edge.getLabel().isBlank()) {
                 throw new BusinessException("连接选项文案不能为空：" + edge.getFrom() + "->" + edge.getTo());
             }
+            if (!isValidScoreType(edge.getScoreType())) {
+                throw new BusinessException("连接评分类型非法：" + edge.getFrom() + "->" + edge.getTo());
+            }
             adjacency.computeIfAbsent(edge.getFrom(), key -> new ArrayList<>()).add(edge.getTo());
         }
 
@@ -438,6 +486,60 @@ public class ScenarioServiceImpl implements ScenarioService {
                 throw new BusinessException("存在从起始节点不可达的节点：" + nodeId);
             }
         }
+    }
+
+    private String normalizeScoreType(Challenge.ScenarioScript.ScenarioEdge edge) {
+        if (edge == null) {
+            return "none";
+        }
+        String scoreType = edge.getScoreType();
+        if (scoreType != null && !scoreType.isBlank()) {
+            return scoreType.trim().toLowerCase();
+        }
+        if (Boolean.TRUE.equals(edge.getIsSafeChoice())) {
+            return "safe";
+        }
+        if (Boolean.FALSE.equals(edge.getIsSafeChoice())) {
+            return "risk";
+        }
+        return "none";
+    }
+
+    private String normalizeScoreType(ScenarioProgress.DecisionRecord record) {
+        if (record == null) {
+            return "none";
+        }
+        String scoreType = record.getScoreType();
+        if (scoreType != null && !scoreType.isBlank()) {
+            return scoreType.trim().toLowerCase();
+        }
+        if (Boolean.TRUE.equals(record.getIsSafeChoice())) {
+            return "safe";
+        }
+        if (Boolean.FALSE.equals(record.getIsSafeChoice())) {
+            return "risk";
+        }
+        return "none";
+    }
+
+    private boolean isValidScoreType(String scoreType) {
+        if (scoreType == null || scoreType.isBlank()) {
+            return true;
+        }
+        String normalized = scoreType.trim().toLowerCase();
+        return "none".equals(normalized) || "safe".equals(normalized) || "risk".equals(normalized);
+    }
+
+    private boolean isScoredChoice(String scoreType) {
+        return isSafeScore(scoreType) || isRiskScore(scoreType);
+    }
+
+    private boolean isSafeScore(String scoreType) {
+        return "safe".equals(scoreType);
+    }
+
+    private boolean isRiskScore(String scoreType) {
+        return "risk".equals(scoreType);
     }
 
     private Challenge.ScenarioScript.ScenarioNode findNodeById(Challenge.ScenarioScript script, String nodeId) {

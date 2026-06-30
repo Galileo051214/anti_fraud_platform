@@ -44,6 +44,86 @@
             <el-progress :percentage="progressPercent" :show-text="false" />
           </div>
 
+          <section class="scenario-flow" v-if="flowNodes.length">
+            <div class="scenario-flow__header">
+              <div>
+                <h2>剧本流程</h2>
+                <span>{{ flowVisitedCount }} / {{ flowNodes.length }} 节点</span>
+              </div>
+              <el-tag size="small" effect="plain">{{ currentNode?.title || '当前节点' }}</el-tag>
+            </div>
+
+            <div class="scenario-flow__viewport">
+              <div class="scenario-flow__canvas" :style="flowCanvasStyle">
+                <svg class="scenario-flow__edges" :viewBox="flowViewBox">
+                  <defs>
+                    <marker
+                      id="scenario-flow-arrow"
+                      markerWidth="10"
+                      markerHeight="10"
+                      refX="8"
+                      refY="5"
+                      orient="auto"
+                      markerUnits="strokeWidth"
+                    >
+                      <path d="M 0 0 L 10 5 L 0 10 z" />
+                    </marker>
+                    <marker
+                      id="scenario-flow-arrow-active"
+                      markerWidth="10"
+                      markerHeight="10"
+                      refX="8"
+                      refY="5"
+                      orient="auto"
+                      markerUnits="strokeWidth"
+                    >
+                      <path d="M 0 0 L 10 5 L 0 10 z" />
+                    </marker>
+                  </defs>
+                  <g
+                    v-for="edgeView in flowEdgeViews"
+                    :key="edgeView.key"
+                    class="scenario-flow__edge"
+                    :class="{
+                      'scenario-flow__edge--active': edgeView.isActive,
+                      'scenario-flow__edge--available': edgeView.isAvailable
+                    }"
+                  >
+                    <path
+                      :d="flowEdgePath(edgeView)"
+                      :marker-end="edgeView.isActive || edgeView.isAvailable ? 'url(#scenario-flow-arrow-active)' : 'url(#scenario-flow-arrow)'"
+                    />
+                    <g
+                      v-if="edgeView.edge.label"
+                      class="scenario-flow__edge-label"
+                      :transform="`translate(${edgeView.labelX}, ${edgeView.labelY})`"
+                    >
+                      <rect x="-58" y="-14" width="116" height="28" rx="14" />
+                      <text text-anchor="middle" dominant-baseline="central">
+                        {{ shortFlowLabel(edgeView.edge.label) }}
+                      </text>
+                    </g>
+                  </g>
+                </svg>
+
+                <div
+                  v-for="(node, index) in flowNodes"
+                  :key="node.id"
+                  class="scenario-flow__node"
+                  :class="flowNodeClass(node)"
+                  :style="flowNodeStyle(node, index)"
+                >
+                  <div class="scenario-flow__node-meta">
+                    <span>{{ nodeTypeName(node.type) }}</span>
+                    <small>{{ roleDisplayName(node.role) }}</small>
+                  </div>
+                  <strong>{{ node.title || node.id }}</strong>
+                  <p>{{ flowNodeSummary(node) }}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <div class="dialogue-section" v-if="currentNode">
             <div class="dialogue__role" :class="`role--${currentNode.role}`">
               <span class="role__avatar">
@@ -103,15 +183,22 @@
                     v-for="(record, idx) in decisionHistory"
                     :key="idx"
                     class="history__item"
-                    :class="{ 'item--safe': record.isSafeChoice, 'item--danger': !record.isSafeChoice }"
+                    :class="{
+                      'item--safe': recordScoreType(record) === 'safe',
+                      'item--danger': recordScoreType(record) === 'risk',
+                      'item--neutral': recordScoreType(record) === 'none'
+                    }"
                   >
                     <span class="history__choice">{{ record.choiceLabel }}</span>
                     <span class="history__badge">
-                      <svg v-if="record.isSafeChoice" viewBox="0 0 24 24" fill="currentColor">
+                      <svg v-if="recordScoreType(record) === 'safe'" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
                       </svg>
-                      <svg v-else viewBox="0 0 24 24" fill="currentColor">
+                      <svg v-else-if="recordScoreType(record) === 'risk'" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                      </svg>
+                      <svg v-else viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 4l1.41 1.41L8.83 10H20v2H8.83l4.58 4.59L12 18l-7-7 7-7z"/>
                       </svg>
                     </span>
                   </div>
@@ -167,12 +254,16 @@
                   v-for="(record, idx) in decisionHistory"
                   :key="`${record.nodeId}-${record.edgeId}-${idx}`"
                   class="scenario-review__item"
-                  :class="{ 'scenario-review__item--safe': record.isSafeChoice, 'scenario-review__item--risk': !record.isSafeChoice }"
+                  :class="{
+                    'scenario-review__item--safe': recordScoreType(record) === 'safe',
+                    'scenario-review__item--risk': recordScoreType(record) === 'risk',
+                    'scenario-review__item--neutral': recordScoreType(record) === 'none'
+                  }"
                 >
                   <span class="scenario-review__step">第 {{ idx + 1 }} 步</span>
                   <span class="scenario-review__choice">{{ record.choiceLabel }}</span>
-                  <el-tag size="small" :type="record.isSafeChoice ? 'success' : 'danger'">
-                    {{ record.isSafeChoice ? '安全选择' : '风险选择' }}
+                  <el-tag size="small" :type="recordTagType(record)">
+                    {{ recordScoreText(record) }}
                   </el-tag>
                 </div>
               </div>
@@ -193,9 +284,36 @@ import {
   makeDecision,
   resetScenario,
   type ScenarioProgressVO,
-  type ScenarioEdgeVO
+  type ScenarioEdgeVO,
+  type ScenarioNode,
+  type ScenarioEdge,
+  type DecisionRecord,
+  type ScenarioScoreType
 } from '@/api/challenge'
 import { useScoreStore } from '@/stores/score'
+
+const FLOW_NODE_WIDTH = 176
+const FLOW_NODE_HEIGHT = 118
+const FLOW_NODE_GAP_X = 248
+const FLOW_NODE_GAP_Y = 162
+
+interface FlowPoint {
+  x: number
+  y: number
+}
+
+interface FlowEdgeView {
+  key: string
+  edge: ScenarioEdge
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  labelX: number
+  labelY: number
+  isActive: boolean
+  isAvailable: boolean
+}
 
 const router = useRouter()
 const route = useRoute()
@@ -209,9 +327,145 @@ const challengeId = ref<number>(0)
 const currentNode = computed(() => progress.value?.currentNodeDetail)
 const availableChoices = computed(() => progress.value?.availableChoices || [])
 const decisionHistory = computed(() => progress.value?.decisionHistory || [])
+const scenarioScript = computed(() => progress.value?.script)
+const flowNodes = computed(() => scenarioScript.value?.nodes || [])
+const flowEdges = computed(() => scenarioScript.value?.edges || [])
 const safeChoiceCount = computed(() =>
-  decisionHistory.value.filter(r => r.isSafeChoice).length
+  decisionHistory.value.filter(r => recordScoreType(r) === 'safe').length
 )
+
+const recordScoreType = (record: DecisionRecord): ScenarioScoreType => {
+  if (record.scoreType === 'safe' || record.scoreType === 'risk' || record.scoreType === 'none') {
+    return record.scoreType
+  }
+  if (record.isSafeChoice === true) return 'safe'
+  if (record.isSafeChoice === false) return 'risk'
+  return 'none'
+}
+
+const recordTagType = (record: DecisionRecord) => {
+  const scoreType = recordScoreType(record)
+  if (scoreType === 'safe') return 'success'
+  if (scoreType === 'risk') return 'danger'
+  return 'info'
+}
+
+const recordScoreText = (record: DecisionRecord) => {
+  const scoreType = recordScoreType(record)
+  if (scoreType === 'safe') return '安全选择'
+  if (scoreType === 'risk') return '风险选择'
+  return '剧情推进'
+}
+
+const edgeIdOf = (edge: ScenarioEdge) => `${edge.from}_${edge.to}`
+
+const activeEdgeIds = computed(() => new Set(decisionHistory.value.map(record => record.edgeId)))
+
+const nextNodeIds = computed(() => new Set(availableChoices.value.map(choice => choice.toNode)))
+
+const visitedNodeIds = computed(() => {
+  const ids = new Set<string>()
+  if (scenarioScript.value?.startNodeId) {
+    ids.add(scenarioScript.value.startNodeId)
+  }
+
+  decisionHistory.value.forEach(record => {
+    ids.add(record.nodeId)
+    const edge = flowEdges.value.find(item => edgeIdOf(item) === record.edgeId)
+    if (edge) {
+      ids.add(edge.to)
+    }
+  })
+
+  if (progress.value?.currentNode) {
+    ids.add(progress.value.currentNode)
+  }
+  if (currentNode.value?.id) {
+    ids.add(currentNode.value.id)
+  }
+
+  return ids
+})
+
+const flowVisitedCount = computed(() => flowNodes.value.filter(node => visitedNodeIds.value.has(node.id)).length)
+
+const normalizeFlowPosition = (node: ScenarioNode, index: number): FlowPoint => {
+  const x = node.position?.x
+  const y = node.position?.y
+  if (Number.isFinite(x) && Number.isFinite(y)) {
+    return {
+      x: Math.max(24, Math.round(Number(x))),
+      y: Math.max(24, Math.round(Number(y)))
+    }
+  }
+
+  const col = index % 3
+  const row = Math.floor(index / 3)
+  return {
+    x: 32 + col * FLOW_NODE_GAP_X,
+    y: 32 + row * FLOW_NODE_GAP_Y
+  }
+}
+
+const flowNodePositions = computed(() => {
+  const map = new Map<string, FlowPoint>()
+  flowNodes.value.forEach((node, index) => {
+    map.set(node.id, normalizeFlowPosition(node, index))
+  })
+  return map
+})
+
+const flowCanvasBounds = computed(() => {
+  const positions = Array.from(flowNodePositions.value.values())
+  if (!positions.length) {
+    return { width: 720, height: 360 }
+  }
+
+  const maxX = Math.max(...positions.map(position => position.x))
+  const maxY = Math.max(...positions.map(position => position.y))
+  return {
+    width: Math.max(720, maxX + FLOW_NODE_WIDTH + 72),
+    height: Math.max(360, maxY + FLOW_NODE_HEIGHT + 72)
+  }
+})
+
+const flowCanvasStyle = computed(() => ({
+  width: `${flowCanvasBounds.value.width}px`,
+  height: `${flowCanvasBounds.value.height}px`
+}))
+
+const flowViewBox = computed(() => `0 0 ${flowCanvasBounds.value.width} ${flowCanvasBounds.value.height}`)
+
+const flowEdgeViews = computed<FlowEdgeView[]>(() => {
+  return flowEdges.value
+    .map((edge, index) => {
+      const fromPosition = flowNodePositions.value.get(edge.from)
+      const toPosition = flowNodePositions.value.get(edge.to)
+      if (!fromPosition || !toPosition) {
+        return null
+      }
+
+      const forward = toPosition.x >= fromPosition.x
+      const x1 = forward ? fromPosition.x + FLOW_NODE_WIDTH : fromPosition.x
+      const x2 = forward ? toPosition.x : toPosition.x + FLOW_NODE_WIDTH
+      const y1 = fromPosition.y + FLOW_NODE_HEIGHT / 2
+      const y2 = toPosition.y + FLOW_NODE_HEIGHT / 2
+
+      return {
+        key: `${edge.from}-${edge.to}-${index}`,
+        edge,
+        x1,
+        y1,
+        x2,
+        y2,
+        labelX: (x1 + x2) / 2,
+        labelY: (y1 + y2) / 2 - 16,
+        isActive: activeEdgeIds.value.has(edgeIdOf(edge)),
+        isAvailable: edge.from === progress.value?.currentNode
+      }
+    })
+    .filter((edgeView): edgeView is FlowEdgeView => Boolean(edgeView))
+})
 
 const progressPercent = computed(() => {
   if (!decisionHistory.value.length) return 0
@@ -265,6 +519,87 @@ const ratingDesc = computed(() => {
 const formatTime = (_nodeId: string) => {
   const now = new Date()
   return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+}
+
+const flowEdgePath = (edgeView: FlowEdgeView) => {
+  const direction = edgeView.x2 >= edgeView.x1 ? 1 : -1
+  const controlOffset = Math.max(72, Math.abs(edgeView.x2 - edgeView.x1) * 0.42)
+  const c1x = edgeView.x1 + controlOffset * direction
+  const c2x = edgeView.x2 - controlOffset * direction
+  return `M ${edgeView.x1} ${edgeView.y1} C ${c1x} ${edgeView.y1}, ${c2x} ${edgeView.y2}, ${edgeView.x2} ${edgeView.y2}`
+}
+
+const flowNodeStyle = (node: ScenarioNode, index: number) => {
+  const position = flowNodePositions.value.get(node.id) || normalizeFlowPosition(node, index)
+  return {
+    width: `${FLOW_NODE_WIDTH}px`,
+    minHeight: `${FLOW_NODE_HEIGHT}px`,
+    transform: `translate(${position.x}px, ${position.y}px)`
+  }
+}
+
+const flowNodeClass = (node: ScenarioNode) => {
+  const isCurrent = node.id === progress.value?.currentNode
+  const isVisited = visitedNodeIds.value.has(node.id)
+  const isNext = nextNodeIds.value.has(node.id)
+  return {
+    'scenario-flow__node--current': isCurrent,
+    'scenario-flow__node--visited': isVisited,
+    'scenario-flow__node--next': isNext,
+    'scenario-flow__node--end': Boolean(scenarioScript.value?.endNodeIds?.includes(node.id)),
+    'scenario-flow__node--muted': !isCurrent && !isVisited && !isNext
+  }
+}
+
+const shortFlowLabel = (label?: string) => {
+  if (!label) return ''
+  return label.length > 10 ? `${label.slice(0, 10)}...` : label
+}
+
+const nodeTypeName = (type: string) => {
+  const typeMap: Record<string, string> = {
+    start: '开始',
+    dialog: '对白',
+    decision: '决策',
+    result: '结果',
+    end: '结局'
+  }
+  return typeMap[type] || '节点'
+}
+
+const roleDisplayName = (role: string) => {
+  const roleMap: Record<string, string> = {
+    scammer: '诈骗方',
+    victim: '受害者',
+    narrator: '旁白'
+  }
+  return roleMap[role] || '旁白'
+}
+
+const flowNodeSummary = (node: ScenarioNode) => {
+  if (node.id === currentNode.value?.id) {
+    const text = currentNode.value?.content || node.content
+    return text || '当前剧情'
+  }
+
+  const historyRecord = decisionHistory.value.find(record => record.nodeId === node.id)
+  if (historyRecord) {
+    return `已选择：${historyRecord.choiceLabel}`
+  }
+
+  if (nextNodeIds.value.has(node.id)) {
+    return '下一步可到达'
+  }
+
+  if (node.id === scenarioScript.value?.startNodeId) {
+    return '起始节点'
+  }
+
+  if (visitedNodeIds.value.has(node.id)) {
+    return '已到达'
+  }
+
+  return '待探索'
 }
 
 const getErrorMessage = (error: unknown, fallback: string) => {
@@ -439,7 +774,7 @@ onMounted(() => {
 }
 
 .scenario-container {
-  max-width: 700px;
+  max-width: 1080px;
   margin: 0 auto;
   padding: 32px 24px;
 }
@@ -449,6 +784,9 @@ onMounted(() => {
   align-items: center;
   gap: 16px;
   margin-bottom: 24px;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
 
   span {
     font-size: 0.9rem;
@@ -469,12 +807,215 @@ onMounted(() => {
   }
 }
 
+.scenario-flow {
+  background: var(--bg-card);
+  border: 1px solid hsl(220, 15%, 90%);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.scenario-flow__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid hsl(220, 15%, 92%);
+
+  h2 {
+    color: var(--text-primary);
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0 0 4px;
+  }
+
+  span {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+}
+
+.scenario-flow__viewport {
+  overflow: auto;
+  padding: 18px;
+  background:
+    linear-gradient(hsla(220, 15%, 88%, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, hsla(220, 15%, 88%, 0.5) 1px, transparent 1px),
+    hsl(220, 20%, 98%);
+  background-size: 24px 24px;
+}
+
+.scenario-flow__canvas {
+  position: relative;
+  min-width: 100%;
+  border-radius: var(--radius-sm);
+}
+
+.scenario-flow__edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+
+  marker path {
+    fill: hsl(220, 12%, 70%);
+  }
+
+  #scenario-flow-arrow-active path {
+    fill: var(--primary);
+  }
+}
+
+.scenario-flow__edge {
+  path {
+    fill: none;
+    stroke: hsl(220, 12%, 70%);
+    stroke-width: 2;
+    stroke-linecap: round;
+    opacity: 0.78;
+  }
+
+  &--active path,
+  &--available path {
+    stroke: var(--primary);
+    stroke-width: 3;
+    opacity: 1;
+  }
+
+  &--available path {
+    stroke-dasharray: 8 8;
+  }
+}
+
+.scenario-flow__edge-label {
+  rect {
+    fill: hsla(0, 0%, 100%, 0.92);
+    stroke: hsl(220, 15%, 88%);
+  }
+
+  text {
+    fill: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .scenario-flow__edge--active &,
+  .scenario-flow__edge--available & {
+    rect {
+      stroke: var(--primary);
+    }
+
+    text {
+      fill: var(--primary);
+    }
+  }
+}
+
+.scenario-flow__node {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: hsla(0, 0%, 100%, 0.94);
+  border: 1px solid hsl(220, 15%, 86%);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 28px hsla(220, 20%, 18%, 0.08);
+  color: var(--text-primary);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    opacity var(--transition-fast),
+    transform var(--transition-fast);
+
+  strong {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 0.95rem;
+    line-height: 1.35;
+  }
+
+  p {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    line-height: 1.45;
+    margin: 0;
+  }
+
+  &--current {
+    border-color: var(--primary);
+    box-shadow: 0 14px 34px hsla(280, 50%, 45%, 0.18);
+  }
+
+  &--visited {
+    border-color: hsl(142, 50%, 72%);
+  }
+
+  &--next {
+    border-color: hsl(38, 80%, 66%);
+  }
+
+  &--end {
+    border-style: double;
+  }
+
+  &--muted {
+    opacity: 0.58;
+  }
+}
+
+.scenario-flow__node-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 42px;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: hsl(220, 15%, 94%);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  small {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+  }
+
+  .scenario-flow__node--current & span {
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+}
+
 .dialogue-section {
   background: var(--bg-card);
   border-radius: var(--radius-md);
   padding: 28px;
   box-shadow: var(--shadow-sm);
   margin-bottom: 24px;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .dialogue__role {
@@ -577,6 +1118,9 @@ onMounted(() => {
   padding: 28px;
   box-shadow: var(--shadow-sm);
   margin-bottom: 24px;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .choices__title {
@@ -650,6 +1194,9 @@ onMounted(() => {
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
 
   :deep(.el-collapse) {
     border: none;
@@ -692,6 +1239,10 @@ onMounted(() => {
   &.item--danger {
     border-left: 3px solid var(--danger);
   }
+
+  &.item--neutral {
+    border-left: 3px solid var(--text-muted);
+  }
 }
 
 .history__choice {
@@ -718,10 +1269,16 @@ onMounted(() => {
   .item--danger & {
     color: var(--danger);
   }
+
+  .item--neutral & {
+    color: var(--text-muted);
+  }
 }
 
 .result-container {
   text-align: center;
+  max-width: 700px;
+  margin: 0 auto;
 }
 
 .result-card {
@@ -885,6 +1442,10 @@ onMounted(() => {
     &--risk {
       border-left-color: var(--danger);
     }
+
+    &--neutral {
+      border-left-color: var(--text-muted);
+    }
   }
 
   &__step {
@@ -906,6 +1467,15 @@ onMounted(() => {
 
   .scenario-container {
     padding: 24px 16px;
+  }
+
+  .scenario-flow__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .scenario-flow__viewport {
+    padding: 14px;
   }
 
   .dialogue-section,

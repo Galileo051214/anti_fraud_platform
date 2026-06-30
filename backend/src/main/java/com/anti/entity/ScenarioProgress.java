@@ -83,8 +83,15 @@ public class ScenarioProgress {
         private String choiceLabel;
 
         /**
-         * 是否为安全选择
+         * 评分类型: none-不计分, safe-安全正确, risk-风险错误
          */
+        private String scoreType;
+
+        /**
+         * 是否为安全选择
+         * @deprecated 使用 scoreType 表达 none/safe/risk，保留用于兼容历史记录
+         */
+        @Deprecated
         private Boolean isSafeChoice;
 
         /**

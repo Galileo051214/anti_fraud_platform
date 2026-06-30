@@ -1,5 +1,6 @@
 package com.anti.entity.vo;
 
+import com.anti.entity.Challenge;
 import com.anti.entity.ScenarioProgress;
 import lombok.Data;
 
@@ -41,6 +42,11 @@ public class ScenarioProgressVO {
      * 可选的下一步
      */
     private List<ScenarioEdgeVO> availableChoices;
+
+    /**
+     * 脱敏后的完整剧本流程图，仅用于前端渲染节点连线，不包含正确答案标记
+     */
+    private Challenge.ScenarioScript script;
 
     /**
      * 决策历史
@@ -131,6 +137,11 @@ public class ScenarioProgressVO {
          * 风险提示
          */
         private String riskTip;
+
+        /**
+         * 节点坐标
+         */
+        private Challenge.ScenarioScript.ScenarioNode.Position position;
     }
 
     /**

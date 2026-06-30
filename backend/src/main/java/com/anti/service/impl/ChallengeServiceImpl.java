@@ -636,6 +636,9 @@ public class ChallengeServiceImpl implements ChallengeService {
             if (edge.getLabel() == null || edge.getLabel().isBlank()) {
                 throw new BusinessException("连接选项文案不能为空：" + edge.getFrom() + "->" + edge.getTo());
             }
+            if (!isValidScenarioScoreType(edge.getScoreType())) {
+                throw new BusinessException("连接评分类型非法：" + edge.getFrom() + "->" + edge.getTo());
+            }
             adjacency.computeIfAbsent(edge.getFrom(), key -> new ArrayList<>()).add(edge.getTo());
         }
 
@@ -663,6 +666,14 @@ public class ChallengeServiceImpl implements ChallengeService {
                 throw new BusinessException("存在从起始节点不可达的节点：" + nodeId);
             }
         }
+    }
+
+    private boolean isValidScenarioScoreType(String scoreType) {
+        if (scoreType == null || scoreType.isBlank()) {
+            return true;
+        }
+        String normalized = scoreType.trim().toLowerCase();
+        return "none".equals(normalized) || "safe".equals(normalized) || "risk".equals(normalized);
     }
 
     @Override

@@ -210,6 +210,27 @@ public class Challenge {
              * 风险提示
              */
             private String riskTip;
+
+            /**
+             * 节点在可视化画布中的位置
+             */
+            private Position position;
+
+            /**
+             * 节点坐标
+             */
+            @Data
+            public static class Position {
+                /**
+                 * 横向坐标
+                 */
+                private Integer x;
+
+                /**
+                 * 纵向坐标
+                 */
+                private Integer y;
+            }
         }
 
         /**
@@ -238,8 +259,15 @@ public class Challenge {
             private String label;
 
             /**
-             * 是否安全选择(正确识别诈骗)
+             * 评分类型: none-剧情推进不计分, safe-安全正确选择, risk-风险错误选择
              */
+            private String scoreType;
+
+            /**
+             * 是否安全选择(正确识别诈骗)
+             * @deprecated 使用 scoreType 表达 none/safe/risk，保留用于兼容历史剧本
+             */
+            @Deprecated
             private Boolean isSafeChoice;
         }
     }

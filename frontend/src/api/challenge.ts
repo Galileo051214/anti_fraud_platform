@@ -34,6 +34,12 @@ export interface ScenarioNode {
   content: string
   role: 'scammer' | 'victim' | 'narrator'
   riskTip?: string
+  position?: ScenarioNodePosition
+}
+
+export interface ScenarioNodePosition {
+  x: number
+  y: number
 }
 
 export interface ScenarioEdge {
@@ -41,8 +47,11 @@ export interface ScenarioEdge {
   to: string
   condition?: string
   label: string
+  scoreType?: ScenarioScoreType
   isSafeChoice?: boolean
 }
+
+export type ScenarioScoreType = 'none' | 'safe' | 'risk'
 
 export interface ChallengeVO {
   id: number
@@ -113,6 +122,7 @@ export interface ScenarioProgressVO {
   currentNode: string
   currentNodeDetail?: ScenarioNodeVO
   availableChoices?: ScenarioEdgeVO[]
+  script?: ScenarioScript
   decisionHistory?: DecisionRecord[]
   status: 'in_progress' | 'completed' | 'failed'
   statusName: string
@@ -133,6 +143,7 @@ export interface ScenarioNodeVO {
   content: string
   role: string
   riskTip?: string
+  position?: ScenarioNodePosition
 }
 
 export interface ScenarioEdgeVO {
@@ -146,6 +157,7 @@ export interface DecisionRecord {
   nodeId: string
   edgeId: string
   choiceLabel: string
+  scoreType?: ScenarioScoreType
   isSafeChoice?: boolean
   timestamp: string
 }
