@@ -84,6 +84,22 @@
         <h3 class="post-card__title">{{ post.title }}</h3>
         <p class="post-card__content">{{ post.content }}</p>
 
+        <div v-if="getPostImages(post).length > 0" class="post-card__thumbs">
+          <div
+            v-for="(imageUrl, imageIndex) in getPostImages(post).slice(0, 3)"
+            :key="`${post.id}-${imageUrl}-${imageIndex}`"
+            class="post-card__thumb"
+          >
+            <img :src="imageUrl" :alt="`${post.title} 图片 ${imageIndex + 1}`" />
+            <span
+              v-if="imageIndex === 2 && getPostImages(post).length > 3"
+              class="post-card__thumb-more"
+            >
+              +{{ getPostImages(post).length - 3 }}
+            </span>
+          </div>
+        </div>
+
         <footer class="post-card__footer">
           <span class="post-card__stat">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -134,7 +150,11 @@
       <div class="forum-page__dialog">
         <header class="forum-page__dialog-header">
           <h2>发布帖子</h2>
-          <button class="forum-page__dialog-close" @click="closePublishDialog">
+          <button
+            class="forum-page__dialog-close"
+            :disabled="publishing || uploadingImages"
+            @click="closePublishDialog()"
+          >
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6 6 18M6 6l12 12"/>
             </svg>
@@ -174,11 +194,69 @@
               rows="8"
             ></textarea>
           </div>
+          <div class="forum-page__form-item">
+            <label class="forum-page__label">图片（最多9张，单张10MB）</label>
+            <div class="forum-page__upload-panel">
+              <div class="forum-page__image-grid">
+                <div
+                  v-for="(imageUrl, imageIndex) in publishImageUrls"
+                  :key="`${imageUrl}-${imageIndex}`"
+                  class="forum-page__image-item"
+                >
+                  <img :src="imageUrl" :alt="`帖子图片 ${imageIndex + 1}`" />
+                  <button
+                    type="button"
+                    class="forum-page__image-remove"
+                    :disabled="publishing || uploadingImages"
+                    aria-label="删除图片"
+                    @click="removePublishImage(imageIndex)"
+                  >
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M18 6 6 18M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+                <button
+                  v-if="publishImageUrls.length < maxImageCount"
+                  type="button"
+                  class="forum-page__upload-trigger"
+                  :disabled="publishing || uploadingImages"
+                  @click="triggerImageUpload"
+                >
+                  <svg class="forum-page__upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                  <span>{{ uploadingImages ? '上传中...' : '添加图片' }}</span>
+                </button>
+              </div>
+              <input
+                ref="imageInputRef"
+                type="file"
+                accept="image/*"
+                multiple
+                class="forum-page__file-input"
+                @change="handleImageChange"
+              />
+              <p class="forum-page__upload-tip">
+                已上传 {{ publishImageUrls.length }}/{{ maxImageCount }} 张，图片会随帖子一起发布
+              </p>
+            </div>
+          </div>
         </div>
         <footer class="forum-page__dialog-footer">
-          <button class="forum-page__btn forum-page__btn--secondary" @click="closePublishDialog">取消</button>
-          <button class="forum-page__btn forum-page__btn--primary" :disabled="publishing" @click="submitPost">
-            {{ publishing ? '发布中...' : '发布' }}
+          <button
+            class="forum-page__btn forum-page__btn--secondary"
+            :disabled="publishing || uploadingImages"
+            @click="closePublishDialog()"
+          >
+            取消
+          </button>
+          <button
+            class="forum-page__btn forum-page__btn--primary"
+            :disabled="publishing || uploadingImages"
+            @click="submitPost"
+          >
+            {{ publishing ? '发布中...' : uploadingImages ? '图片上传中...' : '发布' }}
           </button>
         </footer>
       </div>
@@ -192,8 +270,11 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getPostPage, createPost, likePost, unlikePost } from '@/api/forum'
 import type { PostVO, CreatePostRequest } from '@/api/forum'
+import { uploadImage } from '@/api/upload'
 
 const router = useRouter()
+const maxImageCount = 9
+const maxImageSize = 10 * 1024 * 1024
 
 const tabs = [
   { label: '经验分享', value: 'experience' },
@@ -206,7 +287,10 @@ const sortBy = ref('time')
 const keyword = ref('')
 const loading = ref(false)
 const publishing = ref(false)
+const uploadingImages = ref(false)
 const showPublishDialog = ref(false)
+const imageInputRef = ref<HTMLInputElement | null>(null)
+const publishImageUrls = ref<string[]>([])
 
 const postList = ref<PostVO[]>([])
 const pageNum = ref(1)
@@ -224,6 +308,10 @@ const publishForm = reactive<CreatePostRequest>({
 const getTypeName = (type: string) => {
   const map: Record<string, string> = { experience: '经验', question: '问答', discussion: '讨论' }
   return map[type] || '其他'
+}
+
+const getPostImages = (post: PostVO) => {
+  return (post.imageUrls || []).filter(Boolean)
 }
 
 const formatTime = (time: string) => {
@@ -292,14 +380,85 @@ const openPublishDialog = () => {
   showPublishDialog.value = true
 }
 
-const closePublishDialog = () => {
+const resetPublishDialog = () => {
   showPublishDialog.value = false
   publishForm.title = ''
   publishForm.content = ''
   publishForm.postType = 'experience'
+  publishImageUrls.value = []
+  if (imageInputRef.value) {
+    imageInputRef.value.value = ''
+  }
+}
+
+const closePublishDialog = () => {
+  if (publishing.value || uploadingImages.value) {
+    ElMessage.warning('图片上传或发布中，请稍后')
+    return
+  }
+  resetPublishDialog()
+}
+
+const triggerImageUpload = () => {
+  if (publishing.value || uploadingImages.value) return
+  if (publishImageUrls.value.length >= maxImageCount) {
+    ElMessage.warning(`最多上传${maxImageCount}张图片`)
+    return
+  }
+  imageInputRef.value?.click()
+}
+
+const handleImageChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files || [])
+  if (files.length === 0) return
+
+  const remainingCount = maxImageCount - publishImageUrls.value.length
+  if (files.length > remainingCount) {
+    ElMessage.warning(`还可以上传${remainingCount}张图片`)
+    input.value = ''
+    return
+  }
+
+  const invalidTypeFile = files.find(file => !file.type.startsWith('image/'))
+  if (invalidTypeFile) {
+    ElMessage.warning('请选择图片文件')
+    input.value = ''
+    return
+  }
+
+  const oversizedFile = files.find(file => file.size > maxImageSize)
+  if (oversizedFile) {
+    ElMessage.warning(`图片「${oversizedFile.name}」不能超过10MB`)
+    input.value = ''
+    return
+  }
+
+  uploadingImages.value = true
+  try {
+    for (const file of files) {
+      const imageUrl = await uploadImage(file)
+      publishImageUrls.value = [...publishImageUrls.value, imageUrl]
+    }
+    ElMessage.success(files.length === 1 ? '图片上传成功' : `已上传${files.length}张图片`)
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '图片上传失败，请重试'))
+  } finally {
+    uploadingImages.value = false
+    input.value = ''
+  }
+}
+
+const removePublishImage = (index: number) => {
+  if (publishing.value || uploadingImages.value) return
+  publishImageUrls.value.splice(index, 1)
 }
 
 const submitPost = async () => {
+  if (uploadingImages.value) {
+    ElMessage.warning('图片上传中，请稍后发布')
+    return
+  }
   if (!publishForm.title.trim()) {
     ElMessage.warning('请输入标题')
     return
@@ -313,10 +472,11 @@ const submitPost = async () => {
     await createPost({
       title: publishForm.title.trim(),
       content: publishForm.content.trim(),
-      postType: publishForm.postType
+      postType: publishForm.postType,
+      imageUrls: [...publishImageUrls.value]
     })
     ElMessage.success('发布成功')
-    closePublishDialog()
+    resetPublishDialog()
     loadPosts()
   } catch (error) {
     ElMessage.error(getErrorMessage(error, '发布失败'))
@@ -601,7 +761,7 @@ onMounted(() => {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
     width: 100%;
-    max-width: 560px;
+    max-width: 640px;
     max-height: 90vh;
     overflow: auto;
     box-shadow: var(--shadow-md);
@@ -634,6 +794,11 @@ onMounted(() => {
     &:hover {
       background: var(--bg-page);
       color: var(--text-primary);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .icon {
@@ -721,6 +886,110 @@ onMounted(() => {
     line-height: 1.6;
   }
 
+  &__upload-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 10px;
+  }
+
+  &__image-item,
+  &__upload-trigger {
+    aspect-ratio: 1;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  &__image-item {
+    position: relative;
+    background: var(--bg-page);
+    border: 1px solid var(--border);
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+  }
+
+  &__image-remove {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.62);
+    color: #fff;
+    cursor: pointer;
+    transition: opacity var(--transition), background var(--transition);
+
+    .icon {
+      width: 14px;
+      height: 14px;
+    }
+
+    &:hover:not(:disabled) {
+      background: rgba(0, 0, 0, 0.78);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__upload-trigger {
+    min-height: 96px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--bg-page);
+    border: 1px dashed var(--border);
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color var(--transition), color var(--transition), background var(--transition);
+
+    &:hover:not(:disabled) {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  &__upload-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  &__file-input {
+    display: none;
+  }
+
+  &__upload-tip {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
   &__btn {
     padding: 10px 24px;
     border-radius: var(--radius-sm);
@@ -749,8 +1018,13 @@ onMounted(() => {
       color: var(--text-secondary);
       border: 1px solid var(--border);
 
-      &:hover {
+      &:hover:not(:disabled) {
         border-color: var(--text-secondary);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
     }
   }
@@ -856,6 +1130,42 @@ onMounted(() => {
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  &__thumbs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0 0 16px;
+    max-width: 360px;
+  }
+
+  &__thumb {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--bg-page);
+    border: 1px solid var(--border);
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+  }
+
+  &__thumb-more {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.48);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 600;
   }
 
   &__footer {

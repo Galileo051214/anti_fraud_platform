@@ -33,10 +33,14 @@ class SqlInitializationScriptTest {
     void patchScriptsAreSafeToRunAfterInitScript() throws Exception {
         String lastLoginPatch = Files.readString(Path.of("..", "sql", "patch_user_last_login.sql"));
         String scenarioPatch = Files.readString(Path.of("..", "sql", "patch_scenario_progress.sql"));
+        String chatAgentPatch = Files.readString(Path.of("..", "sql", "patch_chat_agent.sql"));
 
         assertThat(lastLoginPatch).contains("information_schema.COLUMNS");
         assertThat(lastLoginPatch).contains("COLUMN_NAME = 'last_login_time'");
         assertThat(scenarioPatch).contains("information_schema.COLUMNS");
         assertThat(scenarioPatch).contains("COLUMN_NAME = 'final_score'");
+        assertThat(chatAgentPatch).contains("information_schema.COLUMNS");
+        assertThat(chatAgentPatch).contains("COLUMN_NAME = 'answer_type'");
+        assertThat(chatAgentPatch).contains("COLUMN_NAME = 'sources_json'");
     }
 }

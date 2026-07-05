@@ -36,10 +36,10 @@ class ChatControllerAuthTest {
         request.setQuestion("如何识别刷单诈骗");
         request.setSessionId("session_7_1000");
         ChatVO chat = new ChatVO();
-        when(service.askQuestion("如何识别刷单诈骗", "session_7_1000", 7L)).thenReturn(chat);
+        when(service.askQuestion("如何识别刷单诈骗", "session_7_1000", 7L, "auto")).thenReturn(chat);
 
         assertThat(controller.ask(request, new LoginUser(7L, "student", "student")).getData())
                 .isSameAs(chat);
-        verify(service).askQuestion("如何识别刷单诈骗", "session_7_1000", 7L);
+        verify(service).askQuestion("如何识别刷单诈骗", "session_7_1000", 7L, "auto");
     }
 }

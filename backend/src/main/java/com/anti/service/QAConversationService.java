@@ -22,6 +22,19 @@ public interface QAConversationService {
     ChatVO askQuestion(String question, String sessionId, Long userId);
 
     /**
+     * 发送问题并获取AI回答
+     *
+     * @param question 问题内容
+     * @param sessionId 会话ID（可选，为空则创建新会话）
+     * @param userId 用户ID
+     * @param answerType 回答类型：auto / qa / latest_report
+     * @return ChatVO
+     */
+    ChatVO askQuestion(String question, String sessionId, Long userId, String answerType);
+
+    void askQuestionStream(String question, String sessionId, Long userId, String answerType, ChatStreamHandler handler);
+
+    /**
      * 获取会话历史
      *
      * @param sessionId 会话ID
@@ -70,4 +83,18 @@ public interface QAConversationService {
      * @return 新会话ID
      */
     String createSession(Long userId);
+
+    interface ChatStreamHandler {
+        default void onMetadata(ChatVO metadata) {
+        }
+
+        default void onReasoningDelta(String delta) {
+        }
+
+        default void onContentDelta(String delta) {
+        }
+
+        default void onComplete(ChatVO result) {
+        }
+    }
 }

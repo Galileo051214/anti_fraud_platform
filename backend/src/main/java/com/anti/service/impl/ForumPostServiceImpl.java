@@ -15,9 +15,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,7 +32,17 @@ import java.util.stream.Collectors;
 public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost> implements ForumPostService {
 
     private static final int MAX_PAGE_SIZE = 100;
+    private static final int MAX_IMAGE_COUNT = 9;
+    private static final int MAX_IMAGE_URL_LENGTH = 500;
+    private static final String LOCAL_UPLOAD_IMAGE_PREFIX = "/uploads/images/";
     private static final Set<String> ALLOWED_POST_TYPES = Set.of("experience", "question", "discussion");
+    private static final Set<String> HTTP_SCHEMES = Set.of("http", "https");
+
+    @Value("${upload.base-url:http://localhost:8080}")
+    private String uploadBaseUrl = "http://localhost:8080";
+
+    @Value("${forum.post-images.allowed-upload-domains:}")
+    private String allowedUploadDomains = "";
 
     private final ForumPostMapper forumPostMapper;
     private final PostLikeMapper postLikeMapper;
@@ -111,6 +124,9 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
         post.setContent(content);
         post.setPostType(postType);
         post.setTagIds(request.getTagIds());
+        post.setImageUrls(normalizeImageUrls(request.getImageUrls() == null
+                ? Collections.emptyList()
+                : request.getImageUrls()));
         post.setViewCount(0);
         post.setLikeCount(0);
         post.setCommentCount(0);
@@ -156,6 +172,7 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
         if (request.getContent() != null) post.setContent(requireText(request.getContent(), "帖子内容", 10000));
         if (request.getPostType() != null) post.setPostType(normalizePostType(request.getPostType(), false));
         if (request.getTagIds() != null) post.setTagIds(request.getTagIds());
+        if (request.getImageUrls() != null) post.setImageUrls(normalizeImageUrls(request.getImageUrls()));
         post.setUpdateTime(LocalDateTime.now());
 
         updateById(post);
@@ -346,6 +363,95 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
         return trimmed.isEmpty() ? null : trimmed;
     }
 
+    private List<String> normalizeImageUrls(List<String> imageUrls) {
+        if (imageUrls.size() > MAX_IMAGE_COUNT) {
+            throw new BusinessException(400, "帖子图片最多9张");
+        }
+
+        List<String> normalizedUrls = new ArrayList<>(imageUrls.size());
+        for (String imageUrl : imageUrls) {
+            String normalizedUrl = trimToNull(imageUrl);
+            if (normalizedUrl == null) {
+                throw new BusinessException(400, "图片URL不能为空");
+            }
+            if (normalizedUrl.length() > MAX_IMAGE_URL_LENGTH) {
+                throw new BusinessException(400, "图片URL不能超过500个字符");
+            }
+            if (!isAllowedImageUrl(normalizedUrl)) {
+                throw new BusinessException(400, "图片URL只能使用本站/uploads/images/路径或已配置上传域名");
+            }
+            normalizedUrls.add(normalizedUrl);
+        }
+        return normalizedUrls;
+    }
+
+    private boolean isAllowedImageUrl(String imageUrl) {
+        if (imageUrl.startsWith(LOCAL_UPLOAD_IMAGE_PREFIX)) {
+            return true;
+        }
+
+        URI uri;
+        try {
+            uri = new URI(imageUrl);
+        } catch (URISyntaxException e) {
+            return false;
+        }
+
+        String scheme = uri.getScheme();
+        String host = uri.getHost();
+        String path = uri.getPath();
+        if (scheme == null || host == null || path == null) {
+            return false;
+        }
+        if (!HTTP_SCHEMES.contains(scheme.toLowerCase(Locale.ROOT))) {
+            return false;
+        }
+        if (!path.startsWith(LOCAL_UPLOAD_IMAGE_PREFIX)) {
+            return false;
+        }
+        return allowedUploadHostPorts().contains(hostPort(uri));
+    }
+
+    private Set<String> allowedUploadHostPorts() {
+        Set<String> hostPorts = new HashSet<>();
+        addAllowedUploadHostPorts(hostPorts, uploadBaseUrl);
+        addAllowedUploadHostPorts(hostPorts, allowedUploadDomains);
+        return hostPorts;
+    }
+
+    private void addAllowedUploadHostPorts(Set<String> hostPorts, String configuredDomains) {
+        String normalizedConfig = trimToNull(configuredDomains);
+        if (normalizedConfig == null) {
+            return;
+        }
+        Arrays.stream(normalizedConfig.split(","))
+                .map(this::normalizeAllowedUploadHostPort)
+                .filter(Objects::nonNull)
+                .forEach(hostPorts::add);
+    }
+
+    private String normalizeAllowedUploadHostPort(String configuredDomain) {
+        String normalizedDomain = trimToNull(configuredDomain);
+        if (normalizedDomain == null) {
+            return null;
+        }
+        String uriText = normalizedDomain.contains("://") ? normalizedDomain : "https://" + normalizedDomain;
+        try {
+            URI uri = new URI(uriText);
+            if (uri.getHost() == null) {
+                return null;
+            }
+            return hostPort(uri);
+        } catch (URISyntaxException e) {
+            return null;
+        }
+    }
+
+    private String hostPort(URI uri) {
+        String host = uri.getHost().toLowerCase(Locale.ROOT);
+        return uri.getPort() >= 0 ? host + ":" + uri.getPort() : host;
+    }
+
     private boolean isAvailablePost(ForumPost post) {
         return post != null && Integer.valueOf(1).equals(post.getStatus());
     }
@@ -385,6 +491,7 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
         vo.setContent(post.getContent());
         vo.setPostType(post.getPostType());
         vo.setTagIds(post.getTagIds());
+        vo.setImageUrls(safeList(post.getImageUrls()));
         vo.setViewCount(post.getViewCount());
         vo.setLikeCount(post.getLikeCount());
         vo.setCommentCount(post.getCommentCount());

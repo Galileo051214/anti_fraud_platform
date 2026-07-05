@@ -8,6 +8,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -83,6 +84,42 @@ class RequestValidationTest {
     }
 
     @Test
+    void chatRequestRejectsInvalidAgentModeAndOverlongReportFilters() {
+        ChatRequest request = new ChatRequest();
+        request.setQuestion("最新诈骗汇报");
+        request.setAnswerType("invalid");
+        request.setMode("invalid");
+        request.setFraudType("f".repeat(51));
+        request.setRegion("r".repeat(51));
+        request.setTimeRange("t".repeat(21));
+
+        Set<String> messages = messages(validator.validate(request));
+
+        assertThat(messages).contains(
+                "回答类型只能是auto、qa或latest_report",
+                "聊天模式只能是qa或latest_report",
+                "诈骗类型不能超过50个字符",
+                "地区不能超过50个字符",
+                "时间范围不能超过20个字符"
+        );
+    }
+
+    @Test
+    void chatRequestResolvesAnswerTypeFromModeAndWebSearchFlag() {
+        ChatRequest modeRequest = new ChatRequest();
+        modeRequest.setQuestion("最近诈骗汇报");
+        modeRequest.setAnswerType("auto");
+        modeRequest.setMode("latest_report");
+
+        ChatRequest searchRequest = new ChatRequest();
+        searchRequest.setQuestion("最近诈骗汇报");
+        searchRequest.setUseWebSearch(true);
+
+        assertThat(modeRequest.resolveAnswerType()).isEqualTo("latest_report");
+        assertThat(searchRequest.resolveAnswerType()).isEqualTo("latest_report");
+    }
+
+    @Test
     void feedbackRejectsMalformedSessionAndInvalidValue() {
         FeedbackRequest request = new FeedbackRequest();
         request.setSessionId("bad-session");
@@ -103,6 +140,39 @@ class RequestValidationTest {
         Set<String> messages = messages(validator.validate(request));
 
         assertThat(messages).contains("帖子标题不能为空", "帖子内容不能为空", "帖子类型只能是experience、question或discussion");
+    }
+
+    @Test
+    void createPostRejectsTooManyAndBlankImageUrls() {
+        CreatePostRequest request = new CreatePostRequest();
+        request.setTitle("防骗经验");
+        request.setContent("不轻信转账");
+        request.setImageUrls(List.of(
+                " ",
+                "/uploads/images/1.png",
+                "/uploads/images/2.png",
+                "/uploads/images/3.png",
+                "/uploads/images/4.png",
+                "/uploads/images/5.png",
+                "/uploads/images/6.png",
+                "/uploads/images/7.png",
+                "/uploads/images/8.png",
+                "/uploads/images/9.png"
+        ));
+
+        Set<String> messages = messages(validator.validate(request));
+
+        assertThat(messages).contains("帖子图片最多9张", "图片URL不能为空");
+    }
+
+    @Test
+    void updatePostRejectsOverlongImageUrl() {
+        UpdatePostRequest request = new UpdatePostRequest();
+        request.setImageUrls(List.of("/uploads/images/" + "a".repeat(501)));
+
+        Set<String> messages = messages(validator.validate(request));
+
+        assertThat(messages).contains("图片URL不能超过500个字符");
     }
 
     @Test

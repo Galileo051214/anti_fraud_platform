@@ -326,6 +326,7 @@ CREATE TABLE `forum_post` (
     `content` TEXT NOT NULL COMMENT '帖子内容',
     `post_type` ENUM('experience', 'question', 'discussion') NOT NULL DEFAULT 'experience' COMMENT '类型',
     `tag_ids` JSON COMMENT '标签ID数组',
+    `image_urls` JSON COMMENT '帖子图片URL数组',
     `view_count` INT NOT NULL DEFAULT 0 COMMENT '浏览量',
     `like_count` INT NOT NULL DEFAULT 0 COMMENT '点赞数',
     `comment_count` INT NOT NULL DEFAULT 0 COMMENT '评论数',
@@ -395,9 +396,15 @@ CREATE TABLE `qa_conversation` (
     `model` VARCHAR(50) NOT NULL DEFAULT 'deepseek' COMMENT '使用的模型',
     `tokens_used` INT COMMENT '消耗token数',
     `feedback` TINYINT COMMENT '用户反馈:1满意-1不满意',
+    `answer_type` VARCHAR(32) NOT NULL DEFAULT 'qa' COMMENT '回答类型:qa/latest_report',
+    `risk_level` VARCHAR(16) NOT NULL DEFAULT 'low' COMMENT '风险等级:low/medium/high',
+    `sources_json` JSON COMMENT '检索来源JSON数组',
+    `fallback` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否降级回答',
+    `retrieved_at` DATETIME COMMENT '检索时间',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '提问时间',
     PRIMARY KEY (`id`),
     KEY `idx_user_session` (`user_id`, `session_id`),
+    KEY `idx_answer_type_time` (`answer_type`, `create_time`),
     KEY `idx_create_time` (`create_time`),
     CONSTRAINT `fk_qa_user` FOREIGN KEY (`user_id`) REFERENCES `sys_user` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='问答会话记录表';

@@ -1,5 +1,9 @@
 package com.anti.util;
 
+import com.anti.entity.vo.SourceVO;
+
+import java.util.List;
+
 /**
  * 反诈场景Prompt工程设计
  */
@@ -50,6 +54,56 @@ public class AntiFraudPromptTemplate {
 
                 请用友好、专业、耐心的态度回答用户的问题。
                 """;
+    }
+
+    /**
+     * 最新诈骗汇报系统提示词。
+     */
+    public static String getLatestReportSystemPrompt() {
+        return """
+                你是"反诈卫士"，正在基于检索到的官方来源生成最新诈骗汇报。
+
+                ## 要求
+                1. 只使用用户消息中列出的来源信息，不编造来源或数据。
+                2. 如果来源不足或检索已降级，要明确说明"当前检索结果有限"。
+                3. 用简洁条目总结：高发手法、主要风险信号、学生应对建议。
+                4. 每条关键信息尽量标注来源编号，例如[1]。
+                5. 涉及转账、验证码、屏幕共享、贷款解冻金等情况，按高风险提示并建议拨打110或联系官方渠道核验。
+                """;
+    }
+
+    /**
+     * 构建最新诈骗汇报用户提示词。
+     */
+    public static String buildLatestReportPrompt(String question, List<SourceVO> sources, boolean retrievalFallback) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("用户问题：").append(question).append("\n\n");
+        prompt.append("检索状态：").append(retrievalFallback ? "降级或缓存结果，可能不是完整实时结果" : "已获取允许域名来源").append("\n\n");
+        prompt.append("来源：\n");
+        if (sources == null || sources.isEmpty()) {
+            prompt.append("无可用来源。\n");
+        } else {
+            for (int i = 0; i < sources.size(); i++) {
+                SourceVO source = sources.get(i);
+                prompt.append("[")
+                        .append(i + 1)
+                        .append("] ")
+                        .append(abbreviate(source.getTitle(), 120))
+                        .append(" | ")
+                        .append(source.getDomain())
+                        .append(" | ")
+                        .append(source.getUrl());
+                String evidence = hasText(source.getContent()) ? source.getContent() : source.getSnippet();
+                prompt.append("\n内容摘录：")
+                        .append(abbreviate(evidence, 1000));
+                if (source.getPublishedAt() != null && !source.getPublishedAt().isBlank()) {
+                    prompt.append("\n发布时间：").append(source.getPublishedAt());
+                }
+                prompt.append("\n\n");
+            }
+        }
+        prompt.append("请生成一份面向大学生的最新诈骗汇报。");
+        return prompt.toString();
     }
 
     /**
@@ -127,5 +181,17 @@ public class AntiFraudPromptTemplate {
                 4. 真实案例（简要）
                 5. 如果被骗怎么办
                 """.formatted(fraudType);
+    }
+
+    private static String abbreviate(String value, int maxLength) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = value.trim().replaceAll("\\s+", " ");
+        return normalized.length() > maxLength ? normalized.substring(0, maxLength) : normalized;
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

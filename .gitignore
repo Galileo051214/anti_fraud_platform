@@ -25,3 +25,4 @@ Thumbs.db
 frontend/dist/
 output/
 test-results/
+artifacts/

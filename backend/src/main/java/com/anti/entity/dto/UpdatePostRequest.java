@@ -2,6 +2,7 @@ package com.anti.entity.dto;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -37,6 +38,12 @@ public class UpdatePostRequest {
      * 标签ID数组
      */
     private List<Long> tagIds;
+
+    /**
+     * 图片URL数组；null表示不变，空数组表示清空
+     */
+    @Size(max = 9, message = "帖子图片最多9张")
+    private List<@NotBlank(message = "图片URL不能为空") @Size(max = 500, message = "图片URL不能超过500个字符") String> imageUrls;
 
     /**
      * 状态:0禁用1正常

@@ -11,9 +11,14 @@ import com.anti.security.LoginUser;
 import com.anti.service.QAConversationService;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 智能客服控制器
@@ -35,8 +40,63 @@ public class ChatController {
     public Result<ChatVO> ask(@Valid @RequestBody ChatRequest request,
                               @AuthenticationPrincipal LoginUser loginUser) {
         Long userId = requireLogin(loginUser);
-        ChatVO result = qaConversationService.askQuestion(request.getQuestion(), request.getSessionId(), userId);
+        ChatVO result = qaConversationService.askQuestion(
+                request.getQuestion(),
+                request.getSessionId(),
+                userId,
+                request.resolveAnswerType()
+        );
         return Result.success(result);
+    }
+
+    /**
+     * 流式发送问题并获取AI回答。
+     */
+    @PostMapping(value = "/ask-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter askStream(@Valid @RequestBody ChatRequest request,
+                                @AuthenticationPrincipal LoginUser loginUser) {
+        Long userId = requireLogin(loginUser);
+        SseEmitter emitter = new SseEmitter(120_000L);
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                qaConversationService.askQuestionStream(
+                        request.getQuestion(),
+                        request.getSessionId(),
+                        userId,
+                        request.resolveAnswerType(),
+                        new QAConversationService.ChatStreamHandler() {
+                            @Override
+                            public void onMetadata(ChatVO metadata) {
+                                sendEventOrThrow(emitter, "meta", metadata);
+                            }
+
+                            @Override
+                            public void onReasoningDelta(String delta) {
+                                sendEventOrThrow(emitter, "reasoning", Map.of("delta", delta));
+                            }
+
+                            @Override
+                            public void onContentDelta(String delta) {
+                                sendEventOrThrow(emitter, "delta", Map.of("delta", delta));
+                            }
+
+                            @Override
+                            public void onComplete(ChatVO result) {
+                                sendEventOrThrow(emitter, "done", result);
+                            }
+                        }
+                );
+                completeSilently(emitter);
+            } catch (SseSendException e) {
+                completeWithErrorSilently(emitter, e);
+            } catch (Exception e) {
+                sendEventSilently(emitter, "error", Map.of("message", "发送失败，请稍后再试"));
+                completeSilently(emitter);
+            }
+        });
+
+        return emitter;
     }
 
     /**
@@ -107,5 +167,43 @@ public class ChatController {
             throw new BusinessException(401, "请先登录");
         }
         return loginUser.getUserId();
+    }
+
+    private void sendEventOrThrow(SseEmitter emitter, String eventName, Object data) {
+        try {
+            emitter.send(SseEmitter.event().name(eventName).data(data));
+        } catch (IOException | IllegalStateException e) {
+            throw new SseSendException(e);
+        }
+    }
+
+    private void sendEventSilently(SseEmitter emitter, String eventName, Object data) {
+        try {
+            emitter.send(SseEmitter.event().name(eventName).data(data));
+        } catch (IOException | IllegalStateException ignored) {
+            // 客户端断开或响应已提交时无法再写入错误事件。
+        }
+    }
+
+    private void completeSilently(SseEmitter emitter) {
+        try {
+            emitter.complete();
+        } catch (IllegalStateException ignored) {
+            // 响应已结束。
+        }
+    }
+
+    private void completeWithErrorSilently(SseEmitter emitter, Exception e) {
+        try {
+            emitter.completeWithError(e);
+        } catch (IllegalStateException ignored) {
+            // 响应已结束。
+        }
+    }
+
+    private static class SseSendException extends RuntimeException {
+        SseSendException(Throwable cause) {
+            super(cause);
+        }
     }
 }

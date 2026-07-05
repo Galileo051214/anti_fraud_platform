@@ -38,4 +38,10 @@ public class CreatePostRequest {
      * 标签ID数组
      */
     private List<Long> tagIds;
+
+    /**
+     * 图片URL数组
+     */
+    @Size(max = 9, message = "帖子图片最多9张")
+    private List<@NotBlank(message = "图片URL不能为空") @Size(max = 500, message = "图片URL不能超过500个字符") String> imageUrls;
 }
