@@ -32,6 +32,7 @@ mysql -u root -p anti_fraud_platform < sql/seed_challenge.sql
 mysql -u root -p anti_fraud_platform < sql/patch_user_last_login.sql
 mysql -u root -p anti_fraud_platform < sql/patch_challenge_content.sql
 mysql -u root -p anti_fraud_platform < sql/patch_scenario_progress.sql
+mysql -u root -p anti_fraud_platform < sql/patch_agent_challenge.sql
 ```
 
 补丁脚本目标：
@@ -39,8 +40,9 @@ mysql -u root -p anti_fraud_platform < sql/patch_scenario_progress.sql
 - `patch_user_last_login.sql`：给 `sys_user` 增加 `last_login_time`，用于连续学习成就统计。
 - `patch_challenge_content.sql`：允许 `challenge.content` 为空，支持情景模拟关卡只维护 `scripts`。
 - `patch_scenario_progress.sql`：给 `scenario_progress` 增加 `final_score`，用于情景模拟最终得分。
+- `patch_agent_challenge.sql`：增加 `agent_scenario` 关卡类型、`challenge.agent_config` 字段、Agent挑战会话表和每日奖励表。
 
-`patch_user_last_login.sql` 和 `patch_scenario_progress.sql` 已做字段存在性检查，可重复执行。`patch_challenge_content.sql` 是幂等的列定义调整，可重复执行。
+`patch_user_last_login.sql`、`patch_scenario_progress.sql` 和 `patch_agent_challenge.sql` 已做字段/表存在性检查，可重复执行。`patch_challenge_content.sql` 是幂等的列定义调整，可重复执行。
 
 ## 验收检查
 

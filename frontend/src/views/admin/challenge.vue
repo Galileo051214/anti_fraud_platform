@@ -112,6 +112,7 @@
         <el-select v-model="filterType" placeholder="关卡类型" clearable style="width: 140px" @change="fetchChallenges">
           <el-option label="答题挑战" value="quiz" />
           <el-option label="情景模拟" value="scenario" />
+          <el-option label="Agent模拟" value="agent_scenario" />
         </el-select>
         <el-select v-model="filterStatus" placeholder="状态" clearable style="width: 120px" @change="fetchChallenges">
           <el-option label="已启用" :value="1" />
@@ -214,14 +215,15 @@
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="关卡顺序" prop="levelOrder">
-              <el-input-number v-model="form.levelOrder" :min="1" :max="100" />
+              <el-input-number v-model="form.levelOrder" :min="1" :max="999" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="关卡类型" prop="type">
-              <el-select v-model="form.type" placeholder="选择类型" style="width: 100%">
+              <el-select v-model="form.type" placeholder="选择类型" style="width: 100%" @change="handleFormTypeChange">
                 <el-option label="答题挑战" value="quiz" />
                 <el-option label="情景模拟" value="scenario" />
+                <el-option label="Agent模拟挑战" value="agent_scenario" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -234,12 +236,12 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="及格分数" prop="passingScore">
-              <el-input-number v-model="form.passingScore" :min="0" :max="100" />
+              <el-input-number v-model="form.passingScore" :min="0" :max="100" :disabled="form.type === 'agent_scenario'" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="奖励积分" prop="scoreReward">
-              <el-input-number v-model="form.scoreReward" :min="0" :max="1000" :step="5" />
+              <el-input-number v-model="form.scoreReward" :min="0" :max="1000" :step="5" :disabled="form.type === 'agent_scenario'" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -310,6 +312,54 @@
           <ScenarioScriptEditor v-model="form.scripts" style="width: 100%" />
         </el-form-item>
 
+        <!-- Agent模拟基础配置 -->
+        <el-form-item label="Agent配置" prop="agentConfig" v-if="form.type === 'agent_scenario'">
+          <div class="agent-config-editor">
+            <el-alert
+              title="Agent模拟挑战固定为75分通过，每人每天首次通过奖励100积分。"
+              type="info"
+              :closable="false"
+              show-icon
+            />
+            <el-row :gutter="16">
+              <el-col :span="8">
+                <el-input v-model="form.agentConfig.fraudType" placeholder="诈骗类型，如刷单返利" />
+              </el-col>
+              <el-col :span="16">
+                <el-input v-model="form.agentConfig.persona" placeholder="Agent身份，如兼职派单员" />
+              </el-col>
+            </el-row>
+            <el-input
+              v-model="form.agentConfig.scenarioBrief"
+              type="textarea"
+              :rows="3"
+              placeholder="场景简介：说明骗子如何接近用户、主要诱导目标是什么"
+              maxlength="300"
+              show-word-limit
+            />
+            <div class="agent-config-editor__list">
+              <div class="agent-config-editor__head">
+                <span>核心风险点</span>
+                <el-button size="small" plain @click="addAgentRiskPoint">添加</el-button>
+              </div>
+              <div v-for="(_, index) in form.agentConfig.riskPoints" :key="`risk-${index}`" class="agent-config-editor__row">
+                <el-input v-model="form.agentConfig.riskPoints[index]" placeholder="例如：要求垫资做任务" />
+                <el-button link type="danger" @click="removeAgentRiskPoint(index)" :disabled="form.agentConfig.riskPoints.length <= 1">删除</el-button>
+              </div>
+            </div>
+            <div class="agent-config-editor__list">
+              <div class="agent-config-editor__head">
+                <span>安全应对点</span>
+                <el-button size="small" plain @click="addAgentSafeAction">添加</el-button>
+              </div>
+              <div v-for="(_, index) in form.agentConfig.safeActions" :key="`safe-${index}`" class="agent-config-editor__row">
+                <el-input v-model="form.agentConfig.safeActions[index]" placeholder="例如：拒绝转账并通过官方渠道核验" />
+                <el-button link type="danger" @click="removeAgentSafeAction(index)" :disabled="form.agentConfig.safeActions.length <= 1">删除</el-button>
+              </div>
+            </div>
+          </div>
+        </el-form-item>
+
         <el-form-item label="状态">
           <el-radio-group v-model="form.status">
             <el-radio :label="1">启用</el-radio>
@@ -350,6 +400,21 @@
           <el-descriptions-item label="创建时间" :span="2">{{ currentChallenge.createTime }}</el-descriptions-item>
           <el-descriptions-item label="描述" :span="2">{{ currentChallenge.description || '无' }}</el-descriptions-item>
         </el-descriptions>
+
+        <div v-if="currentChallenge.type === 'agent_scenario' && currentChallenge.agentConfig" class="agent-detail">
+          <h4>Agent配置</h4>
+          <p><strong>诈骗类型：</strong>{{ currentChallenge.agentConfig.fraudType }}</p>
+          <p><strong>Agent身份：</strong>{{ currentChallenge.agentConfig.persona }}</p>
+          <p><strong>场景简介：</strong>{{ currentChallenge.agentConfig.scenarioBrief }}</p>
+          <div class="agent-detail__tags">
+            <span v-for="item in currentChallenge.agentConfig.riskPoints" :key="`risk-${item}`" class="agent-detail__tag agent-detail__tag--risk">
+              {{ item }}
+            </span>
+            <span v-for="item in currentChallenge.agentConfig.safeActions" :key="`safe-${item}`" class="agent-detail__tag agent-detail__tag--safe">
+              {{ item }}
+            </span>
+          </div>
+        </div>
 
         <!-- 关卡统计 -->
         <div class="detail-stats" v-if="challengeStats">
@@ -438,6 +503,7 @@ const overview = reactive<ChallengeOverviewVO>({
   disabledChallenges: 0,
   quizChallenges: 0,
   scenarioChallenges: 0,
+  agentScenarioChallenges: 0,
   totalAttempts: 0,
   totalPassedUsers: 0,
   overallPassRate: 0,
@@ -451,7 +517,7 @@ const defaultForm = () => ({
   description: '',
   levelOrder: 1,
   difficulty: 1,
-  type: 'quiz' as 'quiz' | 'scenario',
+  type: 'quiz' as 'quiz' | 'scenario' | 'agent_scenario',
   passingScore: 60,
   scoreReward: 10,
   content: { questions: [] as any[] },
@@ -462,6 +528,13 @@ const defaultForm = () => ({
     edges: [] as any[],
     startNodeId: '',
     endNodeIds: [] as string[]
+  },
+  agentConfig: {
+    fraudType: '',
+    scenarioBrief: '',
+    persona: '',
+    riskPoints: [''] as string[],
+    safeActions: [''] as string[]
   },
   status: 1 as 0 | 1
 })
@@ -529,7 +602,7 @@ const handleEdit = (row: ChallengeVO) => {
     description: row.description,
     levelOrder: row.levelOrder,
     difficulty: row.difficulty,
-    type: row.type as 'quiz' | 'scenario',
+    type: row.type as 'quiz' | 'scenario' | 'agent_scenario',
     passingScore: row.passingScore,
     scoreReward: row.scoreReward,
     content: row.content ? JSON.parse(JSON.stringify(row.content)) : { questions: [] },
@@ -540,6 +613,13 @@ const handleEdit = (row: ChallengeVO) => {
       edges: [],
       startNodeId: '',
       endNodeIds: []
+    },
+    agentConfig: row.agentConfig ? JSON.parse(JSON.stringify(row.agentConfig)) : {
+      fraudType: '',
+      scenarioBrief: '',
+      persona: '',
+      riskPoints: [''],
+      safeActions: ['']
     },
     status: row.status as 0 | 1
   }
@@ -556,6 +636,45 @@ const handleViewDetail = async (row: ChallengeVO) => {
   } catch {
     challengeStats.value = null
   }
+}
+
+const handleFormTypeChange = () => {
+  if (form.value.type === 'agent_scenario') {
+    form.value.passingScore = 75
+    form.value.scoreReward = 100
+    if (!form.value.agentConfig) {
+      form.value.agentConfig = {
+        fraudType: '',
+        scenarioBrief: '',
+        persona: '',
+        riskPoints: [''],
+        safeActions: ['']
+      }
+    }
+  }
+}
+
+const compactStringList = (values: string[]) => {
+  const cleaned = values.map((item) => item.trim()).filter(Boolean)
+  return cleaned.length ? cleaned : ['']
+}
+
+const addAgentRiskPoint = () => {
+  form.value.agentConfig.riskPoints.push('')
+}
+
+const removeAgentRiskPoint = (index: number) => {
+  if (form.value.agentConfig.riskPoints.length <= 1) return
+  form.value.agentConfig.riskPoints.splice(index, 1)
+}
+
+const addAgentSafeAction = () => {
+  form.value.agentConfig.safeActions.push('')
+}
+
+const removeAgentSafeAction = (index: number) => {
+  if (form.value.agentConfig.safeActions.length <= 1) return
+  form.value.agentConfig.safeActions.splice(index, 1)
 }
 
 const handleSubmit = async () => {
@@ -577,7 +696,14 @@ const handleSubmit = async () => {
     const payload = {
       ...submitData,
       ...(form.value.type === 'quiz' ? { content: form.value.content } : {}),
-      ...(form.value.type === 'scenario' ? { scripts: form.value.scripts } : {})
+      ...(form.value.type === 'scenario' ? { scripts: form.value.scripts } : {}),
+      ...(form.value.type === 'agent_scenario' ? {
+        agentConfig: {
+          ...form.value.agentConfig,
+          riskPoints: compactStringList(form.value.agentConfig.riskPoints),
+          safeActions: compactStringList(form.value.agentConfig.safeActions)
+        }
+      } : {})
     }
 
     if (isEdit.value) {
@@ -940,6 +1066,11 @@ onMounted(() => {
     background: hsl(280, 60%, 95%);
     color: hsl(280, 60%, 40%);
   }
+
+  &.type--agent_scenario {
+    background: hsl(168, 65%, 93%);
+    color: hsl(168, 70%, 30%);
+  }
 }
 
 .score-value {
@@ -954,6 +1085,38 @@ onMounted(() => {
 
 .content-editor {
   width: 100%;
+}
+
+.agent-config-editor {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.agent-config-editor__list {
+  padding: 12px;
+  background: hsl(220, 15%, 97%);
+  border: 1px solid hsl(220, 15%, 92%);
+  border-radius: 8px;
+}
+
+.agent-config-editor__head,
+.agent-config-editor__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.agent-config-editor__head {
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.agent-config-editor__row + .agent-config-editor__row {
+  margin-top: 8px;
 }
 
 .question-list {
@@ -1011,6 +1174,52 @@ onMounted(() => {
 }
 
 .challenge-detail {
+  .agent-detail {
+    margin-top: 20px;
+    padding: 16px;
+    background: hsl(168, 45%, 96%);
+    border: 1px solid hsl(168, 35%, 86%);
+    border-radius: 8px;
+
+    h4 {
+      margin: 0 0 12px;
+      color: #1f4f48;
+    }
+
+    p {
+      margin: 6px 0;
+      color: #3f4d5a;
+      line-height: 1.6;
+    }
+  }
+
+  .agent-detail__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .agent-detail__tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+
+    &--risk {
+      background: hsl(0, 75%, 96%);
+      color: hsl(0, 65%, 45%);
+    }
+
+    &--safe {
+      background: hsl(145, 60%, 94%);
+      color: hsl(145, 55%, 34%);
+    }
+  }
+
   .detail-stats {
     margin-top: 20px;
     padding: 16px;

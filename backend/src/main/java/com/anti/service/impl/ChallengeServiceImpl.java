@@ -42,6 +42,11 @@ import java.util.stream.Collectors;
 public class ChallengeServiceImpl implements ChallengeService {
 
     private static final int MAX_PAGE_SIZE = 50;
+    private static final String TYPE_QUIZ = "quiz";
+    private static final String TYPE_SCENARIO = "scenario";
+    private static final String TYPE_AGENT_SCENARIO = "agent_scenario";
+    private static final int AGENT_PASSING_SCORE = 75;
+    private static final int AGENT_SCORE_REWARD = 100;
 
     @Autowired
     private ChallengeMapper challengeMapper;
@@ -81,10 +86,11 @@ public class ChallengeServiceImpl implements ChallengeService {
         List<ChallengeVO> result = new ArrayList<>();
         Set<Long> passedSet = new HashSet<>(passedIds);
         int firstLevel = challenges.stream()
+                .filter(c -> !isAgentScenario(c.getType()))
                 .mapToInt(c -> c.getLevelOrder() != null ? c.getLevelOrder() : Integer.MAX_VALUE)
                 .min()
                 .orElse(1);
-        int maxPassedLevel = getMaxPassedLevel(passedIds);
+        int maxPassedLevel = getMaxPassedLevel(userId);
 
         for (Challenge c : challenges) {
             ChallengeVO vo = convertToVO(c);
@@ -92,7 +98,8 @@ public class ChallengeServiceImpl implements ChallengeService {
             vo.setHighestScore(highestScores.get(c.getId()));
 
             int levelOrder = c.getLevelOrder() != null ? c.getLevelOrder() : firstLevel;
-            boolean shouldUnlock = vo.getPassed()
+            boolean shouldUnlock = isAgentScenario(c.getType())
+                    || vo.getPassed()
                     || levelOrder <= (maxPassedLevel > 0 ? maxPassedLevel + 1 : firstLevel);
             vo.setLocked(!shouldUnlock && !vo.getPassed());
 
@@ -127,9 +134,10 @@ public class ChallengeServiceImpl implements ChallengeService {
 
             List<Long> passedIds = safeList(recordMapper.selectPassedChallengeIds(userId));
             int levelOrder = challenge.getLevelOrder() != null ? challenge.getLevelOrder() : getFirstEnabledLevel();
-            int maxPassedLevel = getMaxPassedLevel(passedIds);
+            int maxPassedLevel = getMaxPassedLevel(userId);
             boolean alreadyPassed = Boolean.TRUE.equals(vo.getPassed());
-            boolean shouldUnlock = alreadyPassed
+            boolean shouldUnlock = isAgentScenario(challenge.getType())
+                    || alreadyPassed
                     || levelOrder <= (maxPassedLevel > 0 ? maxPassedLevel + 1 : getFirstEnabledLevel());
             vo.setLocked(!shouldUnlock && !alreadyPassed);
         }
@@ -176,7 +184,7 @@ public class ChallengeServiceImpl implements ChallengeService {
             throw new BusinessException("关卡不存在或已禁用");
         }
 
-        if (!"quiz".equals(challenge.getType())) {
+        if (!TYPE_QUIZ.equals(challenge.getType())) {
             throw new BusinessException("该关卡不是答题类型");
         }
 
@@ -339,7 +347,7 @@ public class ChallengeServiceImpl implements ChallengeService {
     @Override
     public ChallengeVO createChallenge(CreateChallengeRequest request) {
         validateChallengeType(request.getType());
-        validateChallengeDefinition(request.getType(), request.getContent(), request.getScripts());
+        validateChallengeDefinition(request.getType(), request.getContent(), request.getScripts(), request.getAgentConfig());
 
         Challenge challenge = new Challenge();
         challenge.setTitle(request.getTitle());
@@ -347,10 +355,11 @@ public class ChallengeServiceImpl implements ChallengeService {
         challenge.setLevelOrder(request.getLevelOrder());
         challenge.setDifficulty(request.getDifficulty());
         challenge.setType(request.getType());
-        challenge.setPassingScore(request.getPassingScore() != null ? request.getPassingScore() : 60);
-        challenge.setScoreReward(request.getScoreReward() != null ? request.getScoreReward() : 10);
+        challenge.setPassingScore(isAgentScenario(request.getType()) ? AGENT_PASSING_SCORE : request.getPassingScore() != null ? request.getPassingScore() : 60);
+        challenge.setScoreReward(isAgentScenario(request.getType()) ? AGENT_SCORE_REWARD : request.getScoreReward() != null ? request.getScoreReward() : 10);
         challenge.setContent(request.getContent());
         challenge.setScripts(request.getScripts());
+        challenge.setAgentConfig(request.getAgentConfig());
         challenge.setStatus(1);
         challenge.setCreateTime(LocalDateTime.now());
         challengeMapper.insert(challenge);
@@ -373,10 +382,15 @@ public class ChallengeServiceImpl implements ChallengeService {
         if (request.getScoreReward() != null) challenge.setScoreReward(request.getScoreReward());
         if (request.getContent() != null) challenge.setContent(request.getContent());
         if (request.getScripts() != null) challenge.setScripts(request.getScripts());
+        if (request.getAgentConfig() != null) challenge.setAgentConfig(request.getAgentConfig());
         if (request.getStatus() != null) challenge.setStatus(request.getStatus());
 
         validateChallengeType(challenge.getType());
-        validateChallengeDefinition(challenge.getType(), challenge.getContent(), challenge.getScripts());
+        if (isAgentScenario(challenge.getType())) {
+            challenge.setPassingScore(AGENT_PASSING_SCORE);
+            challenge.setScoreReward(AGENT_SCORE_REWARD);
+        }
+        validateChallengeDefinition(challenge.getType(), challenge.getContent(), challenge.getScripts(), challenge.getAgentConfig());
 
         challengeMapper.updateById(challenge);
         return convertToVO(challenge);
@@ -437,10 +451,11 @@ public class ChallengeServiceImpl implements ChallengeService {
         vo.setDifficultyName(ChallengeVO.getDifficultyName(challenge.getDifficulty() != null ? challenge.getDifficulty() : 1));
         vo.setType(challenge.getType());
         vo.setTypeName(ChallengeVO.getTypeName(challenge.getType()));
-        vo.setPassingScore(challenge.getPassingScore());
+        vo.setPassingScore(isAgentScenario(challenge.getType()) ? AGENT_PASSING_SCORE : challenge.getPassingScore());
         vo.setScoreReward(challenge.getScoreReward());
         vo.setContent(challenge.getContent());
         vo.setScripts(challenge.getScripts());
+        vo.setAgentConfig(challenge.getAgentConfig());
         vo.setStatus(challenge.getStatus());
         vo.setCreateTime(challenge.getCreateTime());
         return vo;
@@ -455,17 +470,15 @@ public class ChallengeServiceImpl implements ChallengeService {
         return names;
     }
 
-    private int getMaxPassedLevel(List<Long> passedIds) {
-        if (passedIds == null || passedIds.isEmpty()) return 0;
-        List<Challenge> challenges = safeList(challengeMapper.selectBatchIds(passedIds));
-        return challenges.stream()
-                .mapToInt(c -> c.getLevelOrder() != null ? c.getLevelOrder() : 0)
-                .max()
-                .orElse(0);
+    private int getMaxPassedLevel(Long userId) {
+        if (userId == null) return 0;
+        Integer maxLevel = challengeMapper.selectMaxPassedNonAgentLevel(userId);
+        return maxLevel != null ? maxLevel : 0;
     }
 
     private int getFirstEnabledLevel() {
         return safeList(challengeMapper.selectEnabledChallenges()).stream()
+                .filter(c -> !isAgentScenario(c.getType()))
                 .mapToInt(c -> c.getLevelOrder() != null ? c.getLevelOrder() : Integer.MAX_VALUE)
                 .min()
                 .orElse(1);
@@ -473,6 +486,10 @@ public class ChallengeServiceImpl implements ChallengeService {
 
     private <T> List<T> safeList(List<T> values) {
         return values == null ? Collections.emptyList() : values;
+    }
+
+    private boolean isAgentScenario(String type) {
+        return TYPE_AGENT_SCENARIO.equals(type);
     }
 
     private LocalDateTime resolveSubmitStartTime(Long startTime) {
@@ -487,19 +504,45 @@ public class ChallengeServiceImpl implements ChallengeService {
     }
 
     private void validateChallengeType(String type) {
-        if (!"quiz".equals(type) && !"scenario".equals(type)) {
-            throw new BusinessException("关卡类型只能是quiz或scenario");
+        if (!TYPE_QUIZ.equals(type) && !TYPE_SCENARIO.equals(type) && !TYPE_AGENT_SCENARIO.equals(type)) {
+            throw new BusinessException("关卡类型只能是quiz、scenario或agent_scenario");
         }
     }
 
     private void validateChallengeDefinition(String type,
                                              Challenge.ChallengeContent content,
-                                             Challenge.ScenarioScript scripts) {
-        if ("quiz".equals(type)) {
+                                             Challenge.ScenarioScript scripts,
+                                             Challenge.AgentConfig agentConfig) {
+        if (TYPE_QUIZ.equals(type)) {
             validateQuizContent(content);
             return;
         }
+        if (TYPE_AGENT_SCENARIO.equals(type)) {
+            validateAgentConfig(agentConfig);
+            return;
+        }
         validateScenarioScript(scripts);
+    }
+
+    private void validateAgentConfig(Challenge.AgentConfig config) {
+        if (config == null) {
+            throw new BusinessException("Agent模拟挑战必须配置agentConfig");
+        }
+        if (config.getFraudType() == null || config.getFraudType().isBlank()) {
+            throw new BusinessException("Agent模拟挑战诈骗类型不能为空");
+        }
+        if (config.getScenarioBrief() == null || config.getScenarioBrief().isBlank()) {
+            throw new BusinessException("Agent模拟挑战场景简介不能为空");
+        }
+        if (config.getPersona() == null || config.getPersona().isBlank()) {
+            throw new BusinessException("Agent模拟挑战Agent身份不能为空");
+        }
+        if (config.getRiskPoints() == null || config.getRiskPoints().isEmpty()) {
+            throw new BusinessException("Agent模拟挑战至少需要1个核心风险点");
+        }
+        if (config.getSafeActions() == null || config.getSafeActions().isEmpty()) {
+            throw new BusinessException("Agent模拟挑战至少需要1个安全应对点");
+        }
     }
 
     private void validateQuizContent(Challenge.ChallengeContent content) {
@@ -690,11 +733,14 @@ public class ChallengeServiceImpl implements ChallengeService {
         overview.setDisabledChallenges(totalChallenges - enabledChallenges);
 
         Long quizChallenges = challengeMapper.selectCount(
-                new LambdaQueryWrapper<Challenge>().eq(Challenge::getType, "quiz"));
+                new LambdaQueryWrapper<Challenge>().eq(Challenge::getType, TYPE_QUIZ));
         Long scenarioChallenges = challengeMapper.selectCount(
-                new LambdaQueryWrapper<Challenge>().eq(Challenge::getType, "scenario"));
+                new LambdaQueryWrapper<Challenge>().eq(Challenge::getType, TYPE_SCENARIO));
+        Long agentScenarioChallenges = challengeMapper.selectCount(
+                new LambdaQueryWrapper<Challenge>().eq(Challenge::getType, TYPE_AGENT_SCENARIO));
         overview.setQuizChallenges(quizChallenges);
         overview.setScenarioChallenges(scenarioChallenges);
+        overview.setAgentScenarioChallenges(agentScenarioChallenges);
 
         // 参与数据统计
         Long totalAttempts = recordMapper.countAllAttempts();
@@ -790,7 +836,7 @@ public class ChallengeServiceImpl implements ChallengeService {
             if (challenge != null) {
                 if (status == 1) {
                     validateChallengeType(challenge.getType());
-                    validateChallengeDefinition(challenge.getType(), challenge.getContent(), challenge.getScripts());
+                    validateChallengeDefinition(challenge.getType(), challenge.getContent(), challenge.getScripts(), challenge.getAgentConfig());
                 }
                 challenge.setStatus(status);
                 challengeMapper.updateById(challenge);

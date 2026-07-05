@@ -37,6 +37,14 @@ export interface ScenarioNode {
   position?: ScenarioNodePosition
 }
 
+export interface AgentConfig {
+  fraudType: string
+  scenarioBrief: string
+  persona: string
+  riskPoints: string[]
+  safeActions: string[]
+}
+
 export interface ScenarioNodePosition {
   x: number
   y: number
@@ -60,12 +68,13 @@ export interface ChallengeVO {
   levelOrder: number
   difficulty: number
   difficultyName: string
-  type: 'quiz' | 'scenario'
+  type: 'quiz' | 'scenario' | 'agent_scenario'
   typeName: string
   passingScore: number
   scoreReward: number
   content?: ChallengeContent
   scripts?: ScenarioScript
+  agentConfig?: AgentConfig
   status: number
   createTime: string
   passed?: boolean
@@ -113,6 +122,48 @@ export interface ChallengeResultVO {
   highestScore?: number
   newRecord?: boolean
   answerDetail?: AnswerDetail
+}
+
+export interface AgentChallengeMessage {
+  role: 'agent' | 'user'
+  round: number
+  content: string
+  createTime: string
+}
+
+export interface AgentScoringReport {
+  totalScore: number
+  riskIdentificationScore: number
+  highRiskRejectionScore: number
+  officialVerificationScore: number
+  evidenceAndHelpScore: number
+  communicationStabilityScore: number
+  highRiskTriggered?: boolean
+  ruleCapApplied?: boolean
+  rating?: string
+  summary?: string
+  keyMistakes?: string[]
+  correctActions?: string[]
+}
+
+export interface AgentChallengeSessionVO {
+  sessionId: string
+  challengeId: number
+  challengeTitle: string
+  agentConfig?: AgentConfig
+  status: 'in_progress' | 'completed' | 'failed'
+  currentRound: number
+  maxRounds: number
+  messages: AgentChallengeMessage[]
+  scoringReport?: AgentScoringReport
+  summary?: string
+  finalScore?: number
+  passed?: boolean
+  rewardGranted?: boolean
+  earnedScore?: number
+  rewardDate?: string
+  startTime?: string
+  updateTime?: string
 }
 
 export interface ScenarioProgressVO {
@@ -202,6 +253,19 @@ export function getChallengeList(): Promise<ChallengeVO[]> {
   return get<ChallengeVO[]>('/challenge/list')
 }
 
+export interface AgentChallengeReplyRequest {
+  sessionId: string
+  message: string
+  clientMessages?: AgentChallengeMessage[]
+}
+
+export interface AgentChallengeStreamCallbacks {
+  onMeta?: (data: AgentChallengeSessionVO) => void
+  onDelta?: (delta: string) => void
+  onDone?: (data: AgentChallengeSessionVO) => void
+  onError?: (message: string) => void
+}
+
 /**
  * 获取关卡详情
  */
@@ -256,6 +320,113 @@ export function getScenarioProgress(challengeId: number): Promise<ScenarioProgre
  */
 export function makeDecision(data: ScenarioDecisionRequest): Promise<ScenarioProgressVO> {
   return post<ScenarioProgressVO>('/scenario/decision', data)
+}
+
+/**
+ * 开始Agent模拟挑战
+ */
+export function startAgentChallenge(challengeId: number): Promise<AgentChallengeSessionVO> {
+  return post<AgentChallengeSessionVO>(`/agent-challenge/start/${challengeId}`)
+}
+
+/**
+ * 获取Agent模拟挑战会话
+ */
+export function getAgentChallengeSession(sessionId: string): Promise<AgentChallengeSessionVO> {
+  return get<AgentChallengeSessionVO>(`/agent-challenge/session/${sessionId}`)
+}
+
+/**
+ * 流式提交Agent模拟挑战回复
+ */
+export async function replyAgentChallengeStream(
+  data: AgentChallengeReplyRequest,
+  callbacks: AgentChallengeStreamCallbacks = {}
+): Promise<AgentChallengeSessionVO> {
+  const token = localStorage.getItem('token')
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json;charset=utf-8',
+    Accept: 'text/event-stream'
+  }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  const response = await fetch('/api/agent-challenge/reply-stream', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(data)
+  })
+
+  if (!response.ok) {
+    throw new Error(`请求失败：${response.status}`)
+  }
+  if (!response.body) {
+    throw new Error('浏览器不支持流式响应')
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder('utf-8')
+  let buffer = ''
+  let doneData: AgentChallengeSessionVO | null = null
+
+  const handleEventBlock = (block: string) => {
+    const lines = block.split(/\r?\n/)
+    let eventName = 'message'
+    const dataLines: string[] = []
+
+    for (const line of lines) {
+      if (line.startsWith('event:')) {
+        eventName = line.slice('event:'.length).trim()
+      } else if (line.startsWith('data:')) {
+        dataLines.push(line.slice('data:'.length).trimStart())
+      }
+    }
+
+    if (!dataLines.length) return
+    const payload = JSON.parse(dataLines.join('\n'))
+
+    if (eventName === 'meta') {
+      callbacks.onMeta?.(payload as AgentChallengeSessionVO)
+    } else if (eventName === 'delta') {
+      callbacks.onDelta?.(payload.delta || '')
+    } else if (eventName === 'done') {
+      doneData = payload as AgentChallengeSessionVO
+      callbacks.onDone?.(doneData)
+    } else if (eventName === 'error') {
+      const message = payload.message || 'Agent模拟挑战暂时不可用'
+      callbacks.onError?.(message)
+      throw new Error(message)
+    }
+  }
+
+  while (true) {
+    const { value, done } = await reader.read()
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done })
+
+    let separatorIndex = buffer.search(/\r?\n\r?\n/)
+    while (separatorIndex >= 0) {
+      const block = buffer.slice(0, separatorIndex)
+      const separatorLength = buffer.startsWith('\r\n\r\n', separatorIndex) ? 4 : 2
+      buffer = buffer.slice(separatorIndex + separatorLength)
+      if (block.trim()) {
+        handleEventBlock(block)
+      }
+      separatorIndex = buffer.search(/\r?\n\r?\n/)
+    }
+
+    if (done) {
+      if (buffer.trim()) {
+        handleEventBlock(buffer)
+      }
+      break
+    }
+  }
+
+  if (!doneData) {
+    throw new Error('流式响应未正常结束')
+  }
+  return doneData
 }
 
 /**
@@ -320,6 +491,7 @@ export interface ChallengeOverviewVO {
   disabledChallenges: number
   quizChallenges: number
   scenarioChallenges: number
+  agentScenarioChallenges: number
   totalAttempts: number
   totalPassedUsers: number
   overallPassRate: number
@@ -376,11 +548,12 @@ export function createChallenge(data: {
   description: string
   levelOrder: number
   difficulty: number
-  type: 'quiz' | 'scenario'
+  type: 'quiz' | 'scenario' | 'agent_scenario'
   passingScore: number
   scoreReward: number
   content?: ChallengeContent
   scripts?: ScenarioScript
+  agentConfig?: AgentConfig
 }): Promise<ChallengeVO> {
   return post<ChallengeVO>('/challenge', data)
 }
@@ -393,11 +566,12 @@ export function updateChallenge(id: number, data: {
   description?: string
   levelOrder?: number
   difficulty?: number
-  type?: 'quiz' | 'scenario'
+  type?: 'quiz' | 'scenario' | 'agent_scenario'
   passingScore?: number
   scoreReward?: number
   content?: ChallengeContent
   scripts?: ScenarioScript
+  agentConfig?: AgentConfig
   status?: number
 }): Promise<ChallengeVO> {
   return put<ChallengeVO>(`/challenge/${id}`, data)

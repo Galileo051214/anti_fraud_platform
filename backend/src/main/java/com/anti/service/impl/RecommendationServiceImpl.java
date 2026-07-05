@@ -1250,13 +1250,18 @@ public class RecommendationServiceImpl implements RecommendationService {
         RecommendationVO vo = new RecommendationVO();
         vo.setItemId(c.getId());
         vo.setItemType("challenge");
+        vo.setItemSubtype(c.getType());
         vo.setTitle(c.getTitle());
         vo.setSummary(c.getDescription());
         vo.setScore(BigDecimal.valueOf(c.getScoreReward() != null ? c.getScoreReward() : 0));
         vo.setReasons(List.of(reason));
         List<String> tags = new ArrayList<>();
         if (c.getType() != null) {
-            tags.add("scenario".equalsIgnoreCase(c.getType()) ? "情景模拟" : "知识闯关");
+            tags.add(switch (c.getType()) {
+                case "scenario" -> "情景模拟";
+                case "agent_scenario" -> "Agent模拟";
+                default -> "知识闯关";
+            });
         }
         if (c.getDifficulty() != null) {
             tags.add("难度" + c.getDifficulty());

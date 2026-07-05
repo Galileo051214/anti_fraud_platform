@@ -209,6 +209,7 @@ import { getChallengeProgress, type ChallengeVO } from '@/api/challenge'
 import { getRecommendationList, recordRecommendationClick, type RecommendationVO } from '@/api/recommendation'
 import { useScoreStore } from '@/stores/score'
 import { useUserStore } from '@/stores/user'
+import { getChallengeRoute, getRecommendationChallengeRoute } from '@/utils/challengeRoute'
 import {
   IconUsers, IconGame, IconBot, IconChart, IconEye, IconHeart,
   IconCoin, IconPhone, IconCall, IconLove, IconBank,
@@ -294,11 +295,7 @@ function formatDate(value?: string) {
 }
 
 function openChallenge(item: ChallengeVO) {
-  if (item.type === 'scenario') {
-    router.push(`/challenge/scenario/${item.id}`)
-    return
-  }
-  router.push(`/challenge/${item.id}`)
+  router.push(getChallengeRoute(item.id, item.type))
 }
 
 function openRecommendation(item: RecommendationVO) {
@@ -308,7 +305,7 @@ function openRecommendation(item: RecommendationVO) {
     return
   }
   if (item.itemType === 'challenge') {
-    router.push(`/challenge/${item.itemId}`)
+    router.push(getRecommendationChallengeRoute(item))
     return
   }
   router.push(`/case/${item.itemId}`)

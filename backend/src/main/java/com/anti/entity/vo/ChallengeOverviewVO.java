@@ -36,6 +36,11 @@ public class ChallengeOverviewVO {
     private Long scenarioChallenges;
 
     /**
+     * Agent模拟挑战数
+     */
+    private Long agentScenarioChallenges;
+
+    /**
      * 总参与次数
      */
     private Long totalAttempts;

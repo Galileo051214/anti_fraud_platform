@@ -240,7 +240,7 @@ class RequestValidationTest {
 
         Set<String> messages = messages(validator.validate(request));
 
-        assertThat(messages).contains("关卡类型只能是quiz或scenario");
+        assertThat(messages).contains("关卡类型只能是quiz、scenario或agent_scenario");
     }
 
     private static Set<String> messages(Set<? extends ConstraintViolation<?>> violations) {

@@ -66,6 +66,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '情景模拟' }
       },
       {
+        path: 'challenge/agent/:id',
+        name: 'ChallengeAgent',
+        component: () => import('@/views/challenge/agent.vue'),
+        meta: { title: 'Agent模拟挑战' }
+      },
+      {
         path: 'challenge/:id',
         name: 'ChallengeDetail',
         component: () => import('@/views/challenge/detail.vue'),

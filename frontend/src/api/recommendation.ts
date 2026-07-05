@@ -3,6 +3,7 @@ import { get, post } from '@/utils/request'
 export interface RecommendationVO {
   itemId: number
   itemType: 'case' | 'news' | 'challenge' | string
+  itemSubtype?: string
   title: string
   coverImage?: string
   summary?: string

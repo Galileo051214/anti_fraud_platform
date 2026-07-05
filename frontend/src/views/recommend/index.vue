@@ -83,6 +83,7 @@ import {
   IconShield, IconNews, IconAlert, IconTarget, IconMask,
   IconCoin, IconLove, IconPhone
 } from '@/components/icons'
+import { getRecommendationChallengeRoute } from '@/utils/challengeRoute'
 
 const router = useRouter()
 
@@ -108,7 +109,7 @@ const cardIcon = (item: RecommendationVO) => {
     return IconNews
   }
   if (item.itemType === 'challenge') {
-    return item.reasons?.some((r) => r.includes('情景')) ? IconMask : IconTarget
+    return item.itemSubtype === 'scenario' || item.itemSubtype === 'agent_scenario' ? IconMask : IconTarget
   }
   const tag = item.tags?.[0] || ''
   if (/刷单|返利/.test(tag)) return IconCoin
@@ -152,14 +153,6 @@ const loadList = async () => {
   }
 }
 
-const isScenarioRecommendation = (item: RecommendationVO) => {
-  return item.itemType === 'challenge'
-    && (
-      item.tags?.some((tag) => tag.includes('情景')) ||
-      item.reasons?.some((reason) => reason.includes('情景'))
-    )
-}
-
 const onCardClick = (item: RecommendationVO) => {
   recordRecommendationClick(item.itemId, item.itemType).catch(() => {})
   const id = item.itemId
@@ -168,11 +161,7 @@ const onCardClick = (item: RecommendationVO) => {
     return
   }
   if (item.itemType === 'challenge') {
-    if (isScenarioRecommendation(item)) {
-      router.push(`/challenge/scenario/${id}`)
-      return
-    }
-    router.push(`/challenge/${id}`)
+    router.push(getRecommendationChallengeRoute(item))
     return
   }
   router.push(`/case/${id}`)

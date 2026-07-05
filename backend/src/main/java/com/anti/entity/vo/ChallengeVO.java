@@ -42,7 +42,7 @@ public class ChallengeVO {
     private String difficultyName;
 
     /**
-     * 类型:quiz-答题, scenario-情景模拟
+     * 类型:quiz-答题, scenario-情景模拟, agent_scenario-Agent模拟挑战
      */
     private String type;
 
@@ -70,6 +70,11 @@ public class ChallengeVO {
      * 情景剧本JSON
      */
     private Challenge.ScenarioScript scripts;
+
+    /**
+     * Agent情景模拟配置JSON
+     */
+    private Challenge.AgentConfig agentConfig;
 
     /**
      * 状态
@@ -122,6 +127,7 @@ public class ChallengeVO {
         return switch (type) {
             case "quiz" -> "答题挑战";
             case "scenario" -> "情景模拟";
+            case "agent_scenario" -> "Agent模拟";
             default -> "未知";
         };
     }

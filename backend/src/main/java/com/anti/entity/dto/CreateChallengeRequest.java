@@ -44,11 +44,11 @@ public class CreateChallengeRequest {
     private Integer difficulty;
 
     /**
-     * 类型:quiz-答题, scenario-情景模拟
+     * 类型:quiz-答题, scenario-情景模拟, agent_scenario-Agent模拟挑战
      */
     @NotBlank(message = "关卡类型不能为空")
     @Size(max = 30, message = "关卡类型不能超过30个字符")
-    @Pattern(regexp = "quiz|scenario", message = "关卡类型只能是quiz或scenario")
+    @Pattern(regexp = "quiz|scenario|agent_scenario", message = "关卡类型只能是quiz、scenario或agent_scenario")
     private String type;
 
     /**
@@ -74,4 +74,9 @@ public class CreateChallengeRequest {
      * 情景剧本JSON
      */
     private Challenge.ScenarioScript scripts;
+
+    /**
+     * Agent情景模拟配置JSON
+     */
+    private Challenge.AgentConfig agentConfig;
 }

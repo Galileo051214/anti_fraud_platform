@@ -30,6 +30,7 @@
         <el-tab-pane label="全部关卡" name="all"></el-tab-pane>
         <el-tab-pane label="答题挑战" name="quiz"></el-tab-pane>
         <el-tab-pane label="情景模拟" name="scenario"></el-tab-pane>
+        <el-tab-pane label="Agent模拟" name="agent_scenario"></el-tab-pane>
       </el-tabs>
     </div>
 
@@ -116,6 +117,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getChallengeList, getChallengeProgress, type ChallengeVO } from '@/api/challenge'
+import { getChallengeRoute } from '@/utils/challengeRoute'
 
 const router = useRouter()
 
@@ -154,11 +156,7 @@ const handleCardClick = (item: ChallengeVO) => {
     ElMessage.warning(item.unlockHint || '请先完成前置关卡')
     return
   }
-  if (item.type === 'scenario') {
-    router.push(`/challenge/scenario/${item.id}`)
-  } else {
-    router.push(`/challenge/${item.id}`)
-  }
+  router.push(getChallengeRoute(item.id, item.type))
 }
 
 const fetchData = async () => {
@@ -367,6 +365,11 @@ onMounted(() => {
   &.type--scenario {
     background: hsl(280, 60%, 95%);
     color: hsl(280, 60%, 40%);
+  }
+
+  &.type--agent_scenario {
+    background: hsl(168, 65%, 93%);
+    color: hsl(168, 70%, 30%);
   }
 }
 

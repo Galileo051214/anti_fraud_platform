@@ -68,6 +68,12 @@ public class Challenge {
     private ScenarioScript scripts;
 
     /**
+     * Agent情景模拟配置JSON
+     */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private AgentConfig agentConfig;
+
+    /**
      * 状态:0禁用1启用
      */
     private Integer status;
@@ -270,5 +276,36 @@ public class Challenge {
             @Deprecated
             private Boolean isSafeChoice;
         }
+    }
+
+    /**
+     * Agent情景模拟基础配置
+     */
+    @Data
+    public static class AgentConfig {
+        /**
+         * 诈骗类型
+         */
+        private String fraudType;
+
+        /**
+         * 场景简介
+         */
+        private String scenarioBrief;
+
+        /**
+         * Agent身份设定
+         */
+        private String persona;
+
+        /**
+         * 核心风险点
+         */
+        private List<String> riskPoints;
+
+        /**
+         * 安全应对点
+         */
+        private List<String> safeActions;
     }
 }
