@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>反诈骗学习平台 - Axure 原型线框图</title>
+<style>
+/* ===== 全局样式 ===== */
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--wf-bg:#f0f0f0;--wf-border:#999;--wf-page:#fff;--wf-text:#333;--wf-light:#ccc;--ann-func:#2979ff;--ann-data:#00c853;--ann-btn:#ff6d00;--ann-bg:rgba(255,255,255,0.95)}
+body{background:#f0f0f0;font-family:'Microsoft YaHei','PingFang SC',sans-serif;color:#333;min-height:100vh}
+
+/* ===== 顶部导航 ===== */
+.nav-bar{position:fixed;top:0;left:0;right:0;z-index:100;background:#fff;border-bottom:2px solid #ddd;padding:8px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.nav-bar h1{font-size:16px;font-weight:600;margin-bottom:8px;color:#333}
+.nav-tabs{display:flex;flex-wrap:wrap;gap:4px}
+.nav-tab{padding:6px 14px;font-size:12px;background:#f5f5f5;color:#555;border:1px solid #ddd;border-radius:4px;cursor:pointer;white-space:nowrap;transition:all .2s}
+.nav-tab:hover{background:#e8e8e8;color:#333}
+.nav-tab.active{background:#2979ff;color:#fff;border-color:#2979ff}
+.page-info{font-size:11px;color:#999;margin-top:6px}
+
+/* ===== 页面容器 ===== */
+.main{margin-top:90px}
+.page{padding:40px 20px;display:none}
+.page.active{display:block}
+
+/* ===== 线框图卡片 ===== */
+.wireframe{max-width:1100px;margin:0 auto;background:var(--wf-page);border:2px solid var(--wf-border);border-radius:6px;padding:30px;position:relative;box-shadow:0 4px 20px rgba(0,0,0,.3)}
+
+/* 页面标题栏 */
+.wf-title-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;background:#e8e8e8;border:1px solid var(--wf-border);border-radius:4px;margin-bottom:24px}
+.wf-title-bar .title{font-size:18px;font-weight:700;color:var(--wf-text)}
+.wf-title-bar .id{border:1px solid var(--wf-border);padding:2px 10px;border-radius:20px;font-size:11px;color:#666;background:#f5f5f5}
+
+/* 线框图元素 */
+.wf-el{border:1px solid var(--wf-border);background:#fafafa;padding:8px 12px;border-radius:3px;position:relative;font-size:13px;color:var(--wf-text)}
+.wf-el.highlight{background:#fff8e1;border-color:#ffb300}
+.wf-el.highlight2{background:#e3f2fd;border-color:#2979ff}
+.wf-el.btn-like{background:#e8e8e8;text-align:center;cursor:default;font-weight:500}
+.wf-el.btn-like:hover{background:#ddd}
+.wf-el.input{cursor:text;background:#fff}
+.wf-el.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;background:#e0e0e0;margin:2px}
+.wf-el.badge{padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600}
+.wf-el.badge.red{border:1px solid #e53935;color:#e53935;background:#ffebee}
+.wf-el.badge.green{border:1px solid #43a047;color:#43a047;background:#e8f5e9}
+.wf-el.badge.orange{border:1px solid #fb8c00;color:#fb8c00;background:#fff3e0}
+.wf-el.card{padding:12px;background:#fff;border:1px solid #ddd;border-radius:4px}
+.wf-el.card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+
+/* 热区占位 */
+.wf-hotzone{background:url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='20' height='20' fill='%23f5f5f5'/%3E%3Crect x='1' y='1' width='8' height='8' fill='%23ddd'/%3E%3Crect x='11' y='1' width='8' height='8' fill='%23ddd'/%3E%3Crect x='1' y='11' width='8' height='8' fill='%23ddd'/%3E%3Crect x='11' y='11' width='8' height='8' fill='%23ddd'/%3E%3C/svg%3E") repeat;border:1px solid #bbb}
+.wf-icon-box{width:40px;height:40px;background:#e0e0e0;border:1px solid #bbb;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#888}
+
+/* ===== 布局容器 ===== */
+.layout-row{display:flex;gap:16px;margin-bottom:16px}
+.layout-col{flex:1}
+.layout-grid{display:grid;gap:12px}
+.grid-2{grid-template-columns:1fr 1fr}
+.grid-3{grid-template-columns:1fr 1fr 1fr}
+.grid-4{grid-template-columns:1fr 1fr 1fr 1fr}
+.grid-6{grid-template-columns:repeat(6,1fr)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid #ddd;padding-right:16px}
+.content-area{flex:1}
+.hero-area{padding:40px;text-align:center;background:linear-gradient(135deg,#e8eaf6,#e3f2fd);border:1px solid #c5cae9;border-radius:8px;margin-bottom:20px}
+
+/* ===== 标注 ===== */
+.ann-wrapper{position:relative}
+.ann{position:absolute;z-index:10;padding:6px 10px;border-radius:4px;font-size:11px;line-height:1.4;box-shadow:0 2px 8px rgba(0,0,0,.15);max-width:220px}
+.ann::before{content:'';position:absolute;width:0;height:0;border-style:solid}
+.ann.func{background:rgba(41,121,255,.12);border:1px solid rgba(41,121,255,.5);color:#1565c0}
+.ann.func::before{border-color:transparent rgba(41,121,255,.5) transparent transparent}
+.ann.data{background:rgba(0,200,83,.12);border:1px solid rgba(0,200,83,.5);color:#1b5e20}
+.ann.data::before{border-color:transparent rgba(0,200,83,.5) transparent transparent}
+.ann.btn{background:rgba(255,109,0,.12);border:1px solid rgba(255,109,0,.5);color:#e65100}
+.ann.btn::before{border-color:transparent rgba(255,109,0,.5) transparent transparent}
+.ann.top-left{right:calc(100% + 14px);top:0}
+.ann.top-left::before{right:-10px;top:10px;border-width:8px 0 8px 10px}
+.ann.top-right{left:calc(100% + 14px);top:0}
+.ann.top-right::before{left:-10px;top:10px;border-width:8px 10px 8px 0}
+.ann.bottom-left{right:calc(100% + 14px);bottom:0}
+.ann.bottom-left::before{right:-10px;bottom:10px;border-width:8px 0 8px 10px}
+.ann.bottom-right{left:calc(100% + 14px);bottom:0}
+.ann.bottom-right::before{left:-10px;bottom:10px;border-width:8px 10px 8px 0}
+.ann.top-center{bottom:calc(100% + 10px);left:50%;transform:translateX(-50%)}
+.ann.top-center::before{top:100%;left:50%;transform:translateX(-50%);border-width:8px 8px 0}
+.ann.bottom-center{top:calc(100% + 10px);left:50%;transform:translateX(-50%)}
+.ann.bottom-center::before{bottom:100%;left:50%;transform:translateX(-50%);border-width:0 8px 8px}
+
+/* 标注标签 */
+.ann-badge{position:absolute;width:18px;height:18px;border-radius:50%;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:11}
+.ann-badge.func{background:#2979ff}
+.ann-badge.data{background:#00c853}
+.ann-badge.btn{background:#ff6d00}
+
+/* ===== 图例 ===== */
+.legend{margin-top:20px;padding:12px 16px;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;display:flex;gap:24px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:12px;color:#555}
+.legend-item .dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.legend-item .dot.func{background:#2979ff}
+.legend-item .dot.data{background:#00c853}
+.legend-item .dot.btn{background:#ff6d00}
+
+/* ===== 滚动导航辅助 ===== */
+.scroll-marker{font-size:10px;color:#999;text-align:center;padding:10px}
+</style>
+</head>
+<body>
+
+<div class="nav-bar">
+  <h1>反诈骗学习平台 - Axure 界面原型线框图</h1>
+  <div class="nav-tabs">
+    <div class="nav-tab active" data-page="p1">6.1.1 登录注册</div>
+    <div class="nav-tab" data-page="p2">6.1.2 首页</div>
+    <div class="nav-tab" data-page="p3">6.1.3 资讯</div>
+    <div class="nav-tab" data-page="p4">6.1.4 案例</div>
+    <div class="nav-tab" data-page="p5">6.1.5 知识闯关</div>
+    <div class="nav-tab" data-page="p6">6.1.6 社区论坛</div>
+    <div class="nav-tab" data-page="p7">6.1.7 个人中心</div>
+    <div class="nav-tab" data-page="p8">6.1.8 智能客服</div>
+    <div class="nav-tab" data-page="p9">6.1.9 推荐</div>
+    <div class="nav-tab" data-page="p10">6.1.10 积分成就</div>
+    <div class="nav-tab" data-page="p11">6.1.11 后台管理</div>
+  </div>
+  <div class="page-info">点击上方标签切换模块 | 蓝色=界面功能说明 | 绿色=数据类型/格式 | 橙色=按钮功能说明</div>
+</div>
+
+<div class="main">
+
+<!-- ================================================================== -->
+<!-- 6.1.1 登录与注册模块 -->
+<!-- ================================================================== -->
+<div class="page active" id="p1">
+<div class="wireframe">
+  <div class="wf-title-bar">
+    <span class="title">6.1.1 登录与注册模块</span>
+    <span class="id">VC101 / VC102</span>
+  </div>
+
+  <div class="layout-row" style="gap:30px">
+
+    <!-- 登录界面 -->
+    <div class="layout-col ann-wrapper" style="position:relative">
+      <div style="text-align:center;font-weight:700;font-size:14px;color:#555;margin-bottom:16px">登录界面</div>
+      <!-- 登录卡片 -->
+      <div style="border:1px solid var(--wf-border);border-radius:8px;padding:24px;max-width:320px;margin:0 auto;position:relative">
+        <div style="text-align:center;font-size:16px;font-weight:700;margin-bottom:20px">反诈骗学习平台</div>
+        <div class="wf-el input" style="margin-bottom:12px;padding:8px 12px">用户名</div>
+        <div class="wf-el input" style="margin-bottom:4px;padding:8px 12px">密码</div>
+        <div style="font-size:11px;color:#999;margin-bottom:12px">3-20字符 · 字母/数字/下划线</div>
+        <div style="display:flex;align-items:center;margin-bottom:16px;font-size:12px">
+          <input type="checkbox" id="remember" style="margin-right:6px"><label for="remember">记住密码</label>
+        </div>
+        <div class="wf-el btn-like" style="background:#2979ff;color:#fff;border:none;padding:10px;border-radius:4px">登 录</div>
+        <div style="text-align:center;margin-top:14px;font-size:12px">
+          <a style="color:#2979ff;text-decoration:underline;cursor:default;margin-right:16px">没有账号？立即注册</a>
+          <a style="color:#999;cursor:default">忘记密码</a>
+        </div>
+      </div>
+
+      <!-- 标注 -->
+      <div class="ann func top-right" style="left:calc(100% + 14px);top:40px;max-width:180px">
+        【功能】用户凭用户名+密码登录，校验通过后获取JWT令牌
+      </div>
+      <div class="ann data" style="position:absolute;top:124px;right:calc(100% + 14px);max-width:170px">
+        【数据格式】用户名：VARCHAR(50)，唯一<br>密码：BCrypt加密存储
+      </div>
+      <div class="ann btn" style="position:absolute;bottom:60px;right:calc(100% + 14px);max-width:180px">
+        【按钮】登录→POST /api/user/login；注册链接→跳转注册页
+      </div>
+      <div class="ann-badge func" style="top:38px;right:-8px">1</div>
+      <div class="ann-badge data" style="top:122px;left:-8px">2</div>
+      <div class="ann-badge btn" style="bottom:58px;left:-8px">3</div>
+    </div>
+
+    <!-- 注册界面 -->
+    <div class="layout-col ann-wrapper" style="position:relative">
+      <div style="text-align:center;font-weight:700;font-size:14px;color:#555;margin-bottom:16px">注册界面</div>
+      <!-- 注册卡片 -->
+      <div style="border:1px solid var(--wf-border);border-radius:8px;padding:20px;max-width:380px;margin:0 auto;position:relative">
+        <div style="text-align:center;font-size:15px;font-weight:700;margin-bottom:14px">注册账号</div>
+        <div class="grid-2" style="gap:10px">
+          <div><div class="wf-el input" style="padding:6px 10px;font-size:12px">*用户名</div></div>
+          <div><div class="wf-el input" style="padding:6px 10px;font-size:12px">*学号</div></div>
+          <div><div class="wf-el input" style="padding:6px 10px;font-size:12px">*密码</div></div>
+          <div><div class="wf-el input" style="padding:6px 10px;font-size:12px">*确认密码</div></div>
+          <div><div class="wf-el input" style="padding:6px 10px;font-size:12px">昵称</div></div>
+          <div><div class="wf-el input" style="padding:6px 10px;font-size:12px">手机号</div></div>
+          <div><div class="wf-el input" style="padding:6px 10px;font-size:12px">邮箱</div></div>
+          <div><div class="wf-el input" style="padding:6px 10px;font-size:12px">年级▼</div></div>
+          <div style="grid-column:span 2"><div class="wf-el input" style="padding:6px 10px;font-size:12px">专业</div></div>
+        </div>
+        <div class="wf-el btn-like" style="background:#2979ff;color:#fff;border:none;padding:10px;border-radius:4px;margin-top:14px">注 册</div>
+        <div style="text-align:center;margin-top:10px;font-size:12px;color:#999">已有账号？<a style="color:#2979ff;text-decoration:underline;cursor:default">返回登录</a></div>
+      </div>
+
+      <!-- 标注 -->
+      <div class="ann func" style="position:absolute;top:40px;right:calc(100% + 14px);max-width:170px">
+        【功能】游客填写信息注册，成功自动初始化积分与画像
+      </div>
+      <div class="ann data" style="position:absolute;top:120px;left:calc(100% + 14px);max-width:200px">
+        【数据格式】用户名3-20字符唯一；密码≥6字符；手机号11位数字；邮箱合法格式；年级下拉选择(大一~研究生)
+      </div>
+      <div class="ann btn" style="position:absolute;bottom:60px;right:calc(100% + 14px);max-width:180px">
+        【按钮】注册→POST /api/user/register；返回登录→跳转登录页
+      </div>
+      <div class="ann-badge func" style="top:38px;right:-8px">1</div>
+      <div class="ann-badge data" style="top:118px;left:-8px">2</div>
+      <div class="ann-badge btn" style="bottom:58px;right:-8px">3</div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="dot func"></span>界面功能说明</div>
+    <div class="legend-item"><span class="dot data"></span>数据类型/格式</div>
+    <div class="legend-item"><span class="dot btn"></span>按钮功能说明</div>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================== -->
+<!-- 6.1.2 首页模块 -->
+<!-- ================================================================== -->
+<div class="page" id="p2">
+<div class="wireframe">
+  <div class="wf-title-bar">
+    <span class="title">6.1.2 首页模块</span>
+    <span class="id">VC201</span>
+  </div>
+
+  <div class="ann-wrapper" style="position:relative">
+    <!-- Hero区域 -->
+    <div class="hero-area" style="position:relative">
+      <div style="font-size:26px;font-weight:700;margin-bottom:8px">守护财产安全 从学习开始</div>
+      <div style="font-size:13px;color:#666;margin-bottom:20px">反诈骗教育学习平台 · 提高防骗意识 · 共建安全校园</div>
+      <div style="display:flex;gap:14px;justify-content:center">
+        <div class="wf-el btn-like" style="background:#2979ff;color:#fff;border:none;padding:10px 28px;border-radius:4px">开始学习</div>
+        <div class="wf-el btn-like" style="padding:10px 28px;border-radius:4px">了解诈骗案例</div>
+      </div>
+      <div class="ann func bottom-center" style="max-width:180px">Hero宣传区：展示平台主口号和核心行动按钮</div>
+      <div class="ann-badge func" style="bottom:-8px;left:50%;transform:translateX(-50%)">1</div>
+    </div>
+
+    <!-- 特色功能卡片 -->
+    <div class="grid-4" style="gap:14px;margin-bottom:20px;position:relative">
+      <div class="wf-el card" style="text-align:center;padding:20px 12px">
+        <div class="wf-icon-box" style="margin:0 auto 10px">🎮</div>
+        <div style="font-weight:700;margin-bottom:4px">游戏化学习</div>
+        <div style="font-size:11px;color:#888">闯关答题 · 情景模拟</div>
+      </div>
+      <div class="wf-el card" style="text-align:center;padding:20px 12px">
+        <div class="wf-icon-box" style="margin:0 auto 10px">🤖</div>
+        <div style="font-weight:700;margin-bottom:4px">智能客服</div>
+        <div style="font-size:11px;color:#888">AI反诈助手</div>
+      </div>
+      <div class="wf-el card" style="text-align:center;padding:20px 12px">
+        <div class="wf-icon-box" style="margin:0 auto 10px">📊</div>
+        <div style="font-weight:700;margin-bottom:4px">智能推荐</div>
+        <div style="font-size:11px;color:#888">个性化内容</div>
+      </div>
+      <div class="wf-el card" style="text-align:center;padding:20px 12px">
+        <div class="wf-icon-box" style="margin:0 auto 10px">💬</div>
+        <div style="font-weight:700;margin-bottom:4px">社区互动</div>
+        <div style="font-size:11px;color:#888">经验交流分享</div>
+      </div>
+    </div>
+
+    <!-- 热门案例 -->
+    <div style="position:relative">
+      <div style="font-weight:700;font-size:15px;margin-bottom:12px">热门案例推荐</div>
+      <div class="grid-3" style="gap:12px">
+        <div class="wf-el card">
+          <div style="height:60px;background:#e8e8e8;border-radius:4px;margin-bottom:8px"></div>
+          <div style="font-weight:600;font-size:12px">冒充客服诈骗</div>
+          <div style="font-size:10px;color:#999;margin-top:4px">浏览量 1.2w · 点赞 568</div>
+        </div>
+        <div class="wf-el card">
+          <div style="height:60px;background:#e8e8e8;border-radius:4px;margin-bottom:8px"></div>
+          <div style="font-weight:600;font-size:12px">刷单返利诈骗</div>
+          <div style="font-size:10px;color:#999;margin-top:4px">浏览量 9.8k · 点赞 423</div>
+        </div>
+        <div class="wf-el card">
+          <div style="height:60px;background:#e8e8e8;border-radius:4px;margin-bottom:8px"></div>
+          <div style="font-weight:600;font-size:12px">校园贷诈骗</div>
+          <div style="font-size:10px;color:#999;margin-top:4px">浏览量 8.5k · 点赞 367</div>
+        </div>
+      </div>
+      <div class="ann func top-right" style="max-width:175px">热门案例区：从后端 /api/case/hot 获取，展示案例标题、类型、浏览量</div>
+      <div class="ann-badge func" style="top:-8px;right:-8px">2</div>
+    </div>
+
+    <div class="legend" style="margin-top:20px">
+      <div class="legend-item"><span class="dot func"></span>界面功能说明</div>
+      <div class="legend-item"><span class="dot data"></span>数据类型/格式</div>
+      <div class="legend-item"><span class="dot btn"></span>按钮功能说明</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================== -->
+<!-- 6.1.3 资讯学习模块 -->
+<!-- ================================================================== -->
+<div class="page" id="p3">
+<div class="wireframe">
+  <div class="wf-title-bar">
+    <span class="title">6.1.3 资讯学习模块</span>
+    <span class="id">VC301 / VC302</span>
+  </div>
+
+  <div class="layout-row" style="gap:20px">
+    <!-- 资讯列表 -->
+    <div class="layout-col ann-wrapper" style="position:relative;flex:1.2">
+      <div style="text-align:center;font-weight:700;font-size:14px;color:#555;margin-bottom:12px">资讯列表</div>
+      <!-- 筛选栏 -->
+      <div class="layout-row" style="gap:8px;margin-bottom:12px">
+        <div class="wf-el" style="padding:4px 10px;font-size:12px">全部分类 ▼</div>
+        <div class="wf-el btn-like" style="padding:4px 12px;font-size:12px;background:#e3f2fd">新闻</div>
+        <div class="wf-el btn-like" style="padding:4px 12px;font-size:12px">预警</div>
+        <div class="wf-el btn-like" style="padding:4px 12px;font-size:12px">政策</div>
+        <div class="wf-el input" style="flex:1;padding:4px 10px;font-size:12px">🔍 搜索资讯...</div>
+      </div>
+      <!-- 资讯卡片列表 -->
+      <div style="position:relative">
+        <div class="wf-el card" style="display:flex;gap:12px;margin-bottom:8px;padding:10px">
+          <div style="width:60px;height:50px;background:#e0e0e0;border-radius:4px;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div><span class="wf-el badge green">新闻</span> <span style="font-weight:600;font-size:12px">公安部发布最新反诈预警</span></div>
+            <div style="font-size:10px;color:#999;margin-top:4px">2025-12-01 · 浏览量 2.3k · 点赞 189</div>
+          </div>
+        </div>
+        <div class="wf-el card" style="display:flex;gap:12px;margin-bottom:8px;padding:10px">
+          <div style="width:60px;height:50px;background:#e0e0e0;border-radius:4px;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div><span class="wf-el badge orange">预警</span> <span style="font-weight:600;font-size:12px">新型AI换脸诈骗手法需警惕</span></div>
+            <div style="font-size:10px;color:#999;margin-top:4px">2025-11-28 · 浏览量 5.6k · 点赞 432</div>
+          </div>
+        </div>
+        <div class="wf-el card" style="display:flex;gap:12px;margin-bottom:8px;padding:10px">
+          <div style="width:60px;height:50px;background:#e0e0e0;border-radius:4px;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div><span class="wf-el badge">政策</span> <span style="font-weight:600;font-size:12px">反电信网络诈骗法实施细则</span></div>
+            <div style="font-size:10px;color:#999;margin-top:4px">2025-11-25 · 浏览量 1.1k · 点赞 76</div>
+          </div>
+        </div>
+        <div class="wf-el" style="text-align:center;padding:6px;font-size:12px;color:#888">« 上一页  1  2  3  ...  下一页 »</div>
+      </div>
+
+      <div class="ann func top-right" style="max-width:175px">资讯列表：分类筛选+关键词搜索，分页展示</div>
+      <div class="ann data" style="position:absolute;top:30px;right:calc(100% + 14px);max-width:165px">【数据】类型枚举(新闻/预警/政策)；浏览量/点赞数:INT</div>
+      <div class="ann btn" style="position:absolute;top:100px;right:calc(100% + 14px);max-width:165px">【按钮】卡片→跳转详情；点赞→POST /api/news/{id}/like</div>
+      <div class="ann-badge func" style="top:-8px;right:-8px">1</div>
+      <div class="ann-badge data" style="top:28px;left:-8px">2</div>
+      <div class="ann-badge btn" style="top:96px;left:-8px">3</div>
+    </div>
+
+    <!-- 资讯详情 -->
+    <div class="layout-col ann-wrapper" style="position:relative;flex:0.9">
+      <div style="text-align:center;font-weight:700;font-size:14px;color:#555;margin-bottom:12px">资讯详情</div>
+      <div style="border:1px solid var(--wf-border);border-radius:4px;padding:16px">
+        <div style="font-size:11px;color:#888;margin-bottom:8px"><a style="color:#2979ff;cursor:default">← 返回列表</a></div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:4px">公安部发布最新反诈预警</div>
+        <div style="font-size:11px;color:#888;margin-bottom:12px">作者：管理员 · 2025-12-01 · 浏览量 2.3k</div>
+        <div style="height:80px;background:#e8e8e8;border-radius:4px;margin-bottom:12px"></div>
+        <div style="font-size:12px;color:#555;line-height:1.8;margin-bottom:12px">
+          近期，公安机关在工作中发现诈骗分子利用AI技术实施犯罪的新手法...<br>
+          （富文本正文区域）
+        </div>
+        <div class="wf-el btn-like" style="display:inline-block;padding:4px 16px;font-size:12px">👍 点赞 189</div>
+      </div>
+      <div class="ann func" style="position:absolute;top:30px;right:calc(100% + 14px);max-width:165px">【功能】展示资讯完整内容：标题、作者、发布时间、富文本正文</div>
+      <div class="ann data" style="position:absolute;top:70px;left:calc(100% + 14px);max-width:175px">【数据】内容字段使用富文本HTML存储；浏览量/点赞数自动递增</div>
+      <div class="ann-badge func" style="top:28px;right:-8px">1</div>
+      <div class="ann-badge data" style="top:68px;left:-8px">2</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="dot func"></span>界面功能说明</div>
+    <div class="legend-item"><span class="dot data"></span>数据类型/格式</div>
+    <div class="legend-item"><span class="dot btn"></span>按钮功能说明</div>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================== -->
+<!-- 6.1.4 案例展示模块 -->
+<!-- ================================================================== -->
+<div class="page" id="p4">
+<div class="wireframe">
+  <div class="wf-title-bar">
+    <span class="title">6.1.4 案例展示模块</span>
+    <span class="id">VC401 / VC402</span>
+  </div>
+
+  <div class="layout-row" style="gap:20px">
+    <!-- 案例列表 -->
+    <div class="layout-col ann-wrapper" style="position:relative;flex:1">
+      <div style="text-align:center;font-weight:700;font-size:14px;color:#555;margin-bottom:12px">案例列表</div>
+      <!-- 搜索+标签云 -->
+      <div class="layout-row" style="gap:8px;margin-bottom:8px">
+        <div class="wf-el input" style="flex:1;padding:6px 10px;font-size:12px">🔍 搜索案例...</div>
+      </div>
+      <div style="margin-bottom:12px;display:flex;flex-wrap:wrap;gap:4px">
+        <span class="wf-el tag" style="background:#e3f2fd">全部</span>
+        <span class="wf-el tag">刷单诈骗</span>
+        <span class="wf-el tag">冒充客服</span>
+        <span class="wf-el tag">校园贷</span>
+        <span class="wf-el tag">电信诈骗</span>
+        <span class="wf-el tag">投资理财</span>
+        <span class="wf-el tag">裸聊敲诈</span>
+      </div>
+      <!-- 卡片网格 -->
+      <div class="grid-2" style="gap:10px">
+        <div class="wf-el card" style="padding:12px">
+          <div class="wf-el badge red" style="margin-bottom:4px">极高风险</div>
+          <div style="font-weight:600;font-size:12px;margin-bottom:4px">冒充公检法诈骗</div>
+          <div style="font-size:10px;color:#888">浏览量 2.1w · 难度 ★★★★</div>
+        </div>
+        <div class="wf-el card" style="padding:12px">
+          <div class="wf-el badge orange" style="margin-bottom:4px">高风险</div>
+          <div style="font-weight:600;font-size:12px;margin-bottom:4px">刷单返利诈骗</div>
+          <div style="font-size:10px;color:#888">浏览量 1.8w · 难度 ★★★</div>
+        </div>
+        <div class="wf-el card" style="padding:12px">
+          <div class="wf-el badge" style="background:#e8f5e9;color:#2e7d32;border-color:#43a047">中风险</div>
+          <div style="font-weight:600;font-size:12px;margin-bottom:4px">校园贷诈骗</div>
+          <div style="font-size:10px;color:#888">浏览量 1.2w · 难度 ★★</div>
+        </div>
+        <div class="wf-el card" style="padding:12px">
+          <div class="wf-el badge" style="background:#fff3e0;color:#e65100;border-color:#fb8c00">低风险</div>
+          <div style="font-weight:600;font-size:12px;margin-bottom:4px">虚假中奖诈骗</div>
+          <div style="font-size:10px;color:#888">浏览量 6.5k · 难度 ★</div>
+        </div>
+      </div>
+      <div class="ann data" style="position:absolute;top:50px;right:calc(100% + 14px);max-width:175px">【数据】案例类型:TINYINT枚举；风险等级:极高/高/中/低/极低；难度:1-5</div>
+      <div class="ann btn" style="position:absolute;top:110px;right:calc(100% + 14px);max-width:155px">【按钮】卡片→跳转详情；标签→筛选</div>
+      <div class="ann-badge data" style="top:48px;left:-8px">1</div>
+      <div class="ann-badge btn" style="top:108px;left:-8px">2</div>
+    </div>
+
+    <!-- 案例详情 -->
+    <div class="layout-col ann-wrapper" style="position:relative;flex:1.1">
+      <div style="text-align:center;font-weight:700;font-size:14px;color:#555;margin-bottom:12px">案例详情</div>
+      <div class="layout-row" style="gap:12px">
+        <!-- 主栏 -->
+        <div style="flex:1;border:1px solid var(--wf-border);border-radius:4px;padding:14px">
+          <div style="font-size:11px;color:#888;margin-bottom:6px"><a style="color:#2979ff;cursor:default">← 返回列表</a></div>
+          <div style="font-weight:700;font-size:15px">冒充公检法诈骗</div>
+          <div style="margin:6px 0">
+            <span class="wf-el badge red">极高风险</span>
+            <span class="wf-el badge" style="background:#fff3e0;color:#e65100">难度 ★★★★</span>
+            <span style="font-size:11px;color:#888;margin-left:8px">浏览量 2.1w · 点赞 892</span>
+          </div>
+          <div style="height:60px;background:#e8e8e8;border-radius:4px;margin:8px 0"></div>
+          <div style="font-size:12px;color:#555;line-height:1.7;margin:8px 0">
+            诈骗分子冒充公安局民警，以涉案为由要求受害人配合调查...<br>
+            （富文本剧情描述区域）
+          </div>
+          <div style="font-size:11px;color:#666;margin-top:8px">
+            <b>诈骗剧本（FSM）</b>
+          </div>
+          <div class="layout-row" style="gap:6px;margin-top:6px;flex-wrap:wrap">
+            <span class="wf-el" style="padding:4px 8px;font-size:10px;background:#e3f2fd">⏺ 冒充来电</span>
+            <span style="font-size:10px;color:#888">→</span>
+            <span class="wf-el" style="padding:4px 8px;font-size:10px;background:#e3f2fd">🗣 话术恐吓</span>
+            <span style="font-size:10px;color:#888">→</span>
+            <span class="wf-el" style="padding:4px 8px;font-size:10px;background:#e3f2fd">💰 诱导转账</span>
+          </div>
+          <div class="wf-el btn-like" style="display:inline-block;padding:4px 16px;font-size:12px;margin-top:10px">👍 点赞 892</div>
+        </div>
+        <!-- 侧边栏 -->
+        <div style="width:180px;flex-shrink:0">
+          <div style="border:1px solid var(--wf-border);border-radius:4px;padding:12px">
+            <div style="font-weight:600;font-size:12px;margin-bottom:8px">📊 风险仪表盘</div>
+            <div style="height:8px;background:#e0e0e0;border-radius:4px;margin-bottom:4px"><div style="width:85%;height:100%;background:#e53935;border-radius:4px"></div></div>
+            <div style="font-size:10px;color:#888;text-align:right">风险指数 8.5/10</div>
+          </div>
+          <div style="border:1px solid var(--wf-border);border-radius:4px;padding:12px;margin-top:10px">
+            <div style="font-weight:600;font-size:12px;margin-bottom:8px">相关案例</div>
+            <div style="font-size:11px;color:#2979ff;margin-bottom:4px">刷单返利诈骗</div>
+            <div style="font-size:11px;color:#2979ff;margin-bottom:4px">冒充客服诈骗</div>
+            <div style="font-size:11px;color:#2979ff">投资理财诈骗</div>
+          </div>
+        </div>
+      </div>
+      <div class="ann func" style="position:absolute;top:30px;right:calc(100% + 14px);max-width:170px">【功能】案例详情：剧情内容、FSM剧本可视化、风险仪表盘</div>
+      <div class="ann-badge func" style="top:28px;right:-8px">1</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="dot func"></span>界面功能说明</div>
+    <div class="legend-item"><span class="dot data"></span>数据类型/格式</div>
+    <div class="legend-item"><span class="dot btn"></span>按钮功能说明</div>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================== -->
+<!-- 6.1.5 知识闯关模块 -->
+<!-- ================================================================== -->
+<div class="page" id="p5">
+<div class="wireframe">
+  <div class="wf-title-bar">
+    <span class="title">6.1.5 知识闯关模块</span>
+    <span class="id">VC501 / VC502 / VC503</span>
+  </div>
+
+  <!-- 关卡列表 -->
+  <div class="ann-wrapper" style="position:relative;margin-bottom:24px">
+    <div style="font-weight:700;font-size:14px;color:#555;margin-bottom:10px;text-align:center">关卡列表</div>
+    <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+      <div style="padding:4px 16px;background:#e3f2fd;border:1px solid #2979ff;border-radius:20px;font-size:12px;font-weight:600">全部</div>
+      <div class="wf-el btn-like" style="padding:4px 16px;border-radius:20px;font-size:12px">答题挑战</div>
+      <div class="wf-el btn-like" style="padding:4px 16px;border-radius:20px;font-size:12px">情景模拟</div>
+    </div>
+    <div class="grid-3" style="gap:10px">
+      <div class="wf-el card" style="text-align:center;padding:14px 10px;border-color:#43a047">
+        <div style="font-size:10px;color:#43a047;font-weight:600">✅ 已通关</div>
+        <div style="font-weight:700;font-size:16px;margin:6px 0">第1关</div>
+        <div style="font-size:12px">基础反诈知识</div>
+        <div style="font-size:10px;color:#888;margin-top:6px">题型：单选 · +5积分</div>
+      </div>
+      <div class="wf-el card" style="text-align:center;padding:14px 10px">
+        <div style="font-size:10px;color:#2979ff;font-weight:600">📝 待挑战</div>
+        <div style="font-weight:700;font-size:16px;margin:6px 0">第2关</div>
+        <div style="font-size:12px">常见诈骗手法</div>
+        <div style="font-size:10px;color:#888;margin-top:6px">题型：多选 · +10积分</div>
+      </div>
+      <div class="wf-el card" style="text-align:center;padding:14px 10px;opacity:.5">
+        <div style="font-size:10px;color:#999;font-weight:600">🔒 已锁定</div>
+        <div style="font-weight:700;font-size:16px;margin:6px 0">第3关</div>
+        <div style="font-size:12px">情景模拟实战</div>
+        <div style="font-size:10px;color:#888;margin-top:6px">类型：情景模拟 · +20积分</div>
+      </div>
+    </div>
+    <div class="ann func top-right" style="max-width:170px">关卡列表：进度统计+类型筛选+卡片展示(已通关/待挑战/已锁定)</div>
+    <div class="ann-badge func" style="top:-8px;right:-8px">1</div>
+  </div>
+
+  <!-- 答题挑战 + 情景模拟 -->
+  <div class="layout-row" style="gap:20px">
+    <!-- 答题挑战 -->
+    <div class="layout-col ann-wrapper" style="position:relative;flex:1">
+      <div style="text-align:center;font-weight:700;font-size:14px;color:#555;margin-bottom:10px">答题挑战</div>
+      <div style="border:1px solid var(--wf-border);border-radius:4px;padding:16px">
+        <div style="display:flex;gap:4px;margin-bottom:14px">
+          <div style="flex:1;height:6px;background:#2979ff;border-radius:3px"></div>
+          <div style="flex:1;height:6px;background:#e0e0e0;border-radius:3px"></div>
+          <div style="flex:1;height:6px;background:#e0e0e0;border-radius:3px"></div>
+          <div style="flex:1;height:6px;background:#e0e0e0;border-radius:3px"></div>
+          <div style="flex:1;height:6px;background:#e0e0e0;border-radius:3px"></div>
+        </div>
+        <div style="font-size:11px;color:#888;margin-bottom:8px">单选题 · 5分</div>
+        <div style="font-weight:600;font-size:13px;margin-bottom:12px">以下哪项属于典型电信诈骗特征？</div>
+        <div style="margin-bottom:6px"><div class="wf-el btn-like" style="text-align:left;padding:8px 12px;font-size:12px">A. 要求转账到"安全账户"</div></div>
+        <div style="margin-bottom:6px"><div class="wf-el btn-like" style="text-align:left;padding:8px 12px;font-size:12px;background:#e3f2fd">B. 要求提供短信验证码 ✓</div></div>
+        <div style="margin-bottom:6px"><div class="wf-el btn-like" style="text-align:left;padding:8px 12px;font-size:12px">C. 要求下载远程控制App</div></div>
+        <div style="margin-bottom:14px"><div class="wf-el btn-like" style="text-align:left;padding:8px 12px;font-size:12px">D. 以上都是</div></div>
+        <div class="layout-row" style="gap:8px;justify-content:center">
+          <div class="wf-el btn-like" style="padding:6px 20px;font-size:12px">上一题</div>
+          <div class="wf-el btn-like" style="padding:6px 20px;font-size:12px">下一题</div>
+          <div class="wf-el btn-like" style="padding:6px 20px;font-size:12px;background:#2979ff;color:#fff">提交</div>
+        </div>
+      </div>
+      <div class="ann data" style="position:absolute;top:30px;right:calc(100% + 14px);max-width:155px">【数据】题型:single/multiple枚举；选项A-D；分值INT</div>
+      <div class="ann btn" style="position:absolute;bottom:70px;left:calc(100% + 14px)">【按钮】提交→POST /api/challenge/submit；上一题/下一题切换</div>
+      <div class="ann-badge data" style="top:28px;right:-8px">1</div>
+      <div class="ann-badge btn" style="bottom:68px;left:-8px">2</div>
+    </div>
+
+    <!-- 情景模拟 -->
+    <div class="layout-col ann-wrapper" style="position:relative;flex:1">
+      <div style="text-align:center;font-weight:700;font-size:14px;color:#555;margin-bottom:10px">情景模拟</div>
+      <div style="border:1px solid var(--wf-border);border-radius:4px;padding:16px">
+        <div style="font-size:11px;color:#888;margin-bottom:10px">决策进度：第 2/5 步</div>
+        <div style="display:flex;gap:10px;margin-bottom:12px;padding:10px;background:#f5f5f5;border-radius:4px">
+          <div style="width:32px;height:32px;border-radius:50%;background:#e53935;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px">骗</div>
+          <div style="flex:1;font-size:12px"><b>诈骗分子：</b>你好，我是XX银行客服，你的账户存在异常交易，请配合我们核实信息...</div>
+        </div>
+        <div style="margin-bottom:8px;font-size:12px;font-weight:600">你会怎么做？</div>
+        <div style="margin-bottom:4px"><div class="wf-el btn-like" style="text-align:left;padding:6px 10px;font-size:11px">✅ 挂断电话，自己拨打银行官方客服确认</div></div>
+        <div style="margin-bottom:4px"><div class="wf-el btn-like" style="text-align:left;padding:6px 10px;font-size:11px">❌ 配合对方并提供个人信息</div></div>
+        <div class="wf-el btn-like" style="text-align:center;padding:6px;font-size:12px;margin-top:8px;background:#2979ff;color:#fff">做出决策</div>
+      </div>
+      <div class="ann func" style="position:absolute;top:30px;right:calc(100% + 14px);max-width:170px">【功能】对话式模拟诈骗场景，用户决策选择，系统判定安全与否</div>
+      <div class="ann data" style="position:absolute;bottom:55px;right:calc(100% + 14px);max-width:155px">【数据】FSM节点:start/dialog/decision/result/end；边:isSafeChoice布尔</div>
+      <div class="ann-badge func" style="top:28px;right:-8px">1</div>
+      <div class="ann-badge data" style="bottom:53px;right:-8px">2</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="dot func"></span>界面功能说明</div>
+    <div class="legend-item"><span class="dot data"></span>数据类型/格式</div>
+    <div class="legend-item"><span class="dot btn"></span>按钮功能说明</div>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================== -->
+<!-- 6.1.6 社区论坛模块 -->
+<!-- ================================================================== -->
+<div class="page" id="p6">
+<div class="wireframe">
+  <div class="wf-title-bar">
+    <span class="title">6.1.6 社区论坛模块</span>
+    <span class="id">VC601 / VC602</span>
+  </div>
+
+  <div class="layout-row" style="gap:20px">
+    <!-- 帖子列表 -->
+    <div class="layout-col ann-wrapper" style="position:relative;flex:1.1">
+      <div style="text-align:center;font-weight:700;font-size:14px;color:#555;margin-bottom:12px">帖子列表</div>
+      <div class="layout-row" style="gap:8px;margin-bottom:10px">
+        <div class="wf-el btn-like" style="padding:4px 14px;font-size:12px;background:#e3f2fd">经验分享</div>
+        <div class="wf-el btn-like" style="padding:4px 14px;font-size:12px">求助问答</div>
+        <div class="wf-el btn-like" style="padding:4px 14px;font-size:12px">讨论交流</div>
+        <div class="wf-el input" style="flex:1;padding:4px 10px;font-size:12px">🔍 搜索帖子...</div>
+        <div class="wf-el btn-like" style="padding:4px 14px;font-size:12px;background:#ff6d00;color:#fff">发布帖子</div>
+      </div>
+      <div style="margin-bottom:8px">
+        <div class="wf-el card" style="display:flex;gap:10px;padding:10px">
+          <div style="width:36px;height:36px;border-radius:50%;background:#ddd;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div><span class="wf-el badge" style="background:#e3f2fd">经验分享</span> <span style="font-weight:600;font-size:12px">我是如何识别刷单诈骗的</span></div>
+            <div style="font-size:10px;color:#888;margin-top:4px">小明 · 2小时前 · 浏览 256 · 评论 18 · 点赞 45</div>
+          </div>
+        </div>
+        <div class="wf-el card" style="display:flex;gap:10px;padding:10px">
+          <div style="width:36px;height:36px;border-radius:50%;background:#ddd;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div><span class="wf-el badge" style="background:#fff3e0">求助问答</span> <span style="font-weight:600;font-size:12px">收到这种短信是不是诈骗？</span></div>
+            <div style="font-size:10px;color:#888;margin-top:4px">小红 · 5小时前 · 浏览 89 · 评论 12 · 点赞 8</div>
+          </div>
+        </div>
+        <div class="wf-el card" style="display:flex;gap:10px;padding:10px">
+          <div style="width:36px;height:36px;border-radius:50%;background:#ddd;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div><span class="wf-el badge" style="background:#e8f5e9">讨论交流</span> <span style="font-weight:600;font-size:12px">大家遇到过AI换脸诈骗吗</span></div>
+            <div style="font-size:10px;color:#888;margin-top:4px">小李 · 昨天 · 浏览 432 · 评论 35 · 点赞 67</div>
+          </div>
+        </div>
+      </div>
+      <div class="ann func" style="max-width:175px">帖子列表：类型标签页+排序+搜索，卡片展示作者/标题/统计</div>
+      <div class="ann btn" style="position:absolute;bottom:55px;right:calc(100% + 14px);max-width:155px">【按钮】发布→弹窗模态框；卡片→跳转详情</div>
+      <div class="ann-badge func" style="top:-8px;right:-8px">1</div>
+      <div class="ann-badge btn" style="bottom:53px;right:-8px">2</div>
+    </div>
+
+    <!-- 帖子详情 -->
+    <div class="layout-col ann-wrapper" style="position:relative;flex:0.9">
+      <div style="text-align:center;font-weight:700;font-size:14px;color:#555;margin-bottom:12px">帖子详情</div>
+      <div style="border:1px solid var(--wf-border);border-radius:4px;padding:14px">
+        <div style="font-size:11px;color:#888;margin-bottom:6px"><a style="color:#2979ff;cursor:default">← 返回列表</a></div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+          <div style="width:32px;height:32px;border-radius:50%;background:#ddd;flex-shrink:0"></div>
+          <div><div style="font-weight:600;font-size:12px">小明</div><div style="font-size:10px;color:#888">2小时前</div></div>
+        </div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px">我是如何识别刷单诈骗的</div>
+        <div style="font-size:12px;color:#555;line-height:1.7;margin-bottom:10px">
+          上周我在群里看到一个兼职广告，说是刷单返利，一单能赚几十块...（正文内容）
+        </div>
+        <div style="font-size:11px;color:#888;margin-bottom:10px">👍 45 · 💬 18 条评论</div>
+        <div style="border-top:1px solid #eee;padding-top:10px">
+          <div class="wf-el input" style="padding:6px 10px;font-size:12px;margin-bottom:8px">写下你的评论...</div>
+          <div class="wf-el" style="padding:8px;margin-bottom:6px;background:#f5f5f5;font-size:11px">
+            <b>小红：</b>说得对！我也遇到过类似的情况 <span style="color:#888">👍 3</span>
+          </div>
+          <div class="wf-el" style="padding:8px;background:#f5f5f5;font-size:11px">
+            <b>老师：</b>很好的分享，建议大家提高警惕 <span style="color:#888">👍 8</span>
+          </div>
+        </div>
+      </div>
+      <div class="ann data" style="position:absolute;top:30px;right:calc(100% + 14px);max-width:165px">【数据】正文:TEXT；评论嵌套层级；点赞/浏览数INT</div>
+      <div class="ann-badge data" style="top:28px;right:-8px">1</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="dot func"></span>界面功能说明</div>
+    <div class="legend-item"><span class="dot data"></span>数据类型/格式</div>
+    <div class="legend-item"><span class="dot btn"></span>按钮功能说明</div>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================== -->
+<!-- 6.1.7 个人中心模块 -->
+<!-- ================================================================== -->
+<div class="page" id="p7">
+<div class="wireframe">
+  <div class="wf-title-bar">
+    <span class="title">6.1.7 个人中心模块</span>
+    <span class="id">VC701</span>
+  </div>
+
+  <div class="layout-row" style="gap:20px">
+    <!-- 左侧边栏 -->
+    <div class="ann-wrapper" style="width:200px;flex-shrink:0;position:relative;border-right:1px solid #ddd;padding-right:14px">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="width:56px;height:56px;border-radius:50%;background:#ddd;margin:0 auto 8px;border:2px solid #bbb"></div>
+        <div style="font-weight:700;font-size:14px">小明</div>
+        <div style="font-size:11px;color:#888">软件工程 · 大二</div>
+        <div style="font-size:11px;color:#888">学号：2023010101</div>
+      </div>
+      <div class="grid-3" style="gap:6px;margin-bottom:16px;text-align:center">
+        <div><div style="font-weight:700;font-size:15px">1560</div><div style="font-size:10px;color:#888">积分</div></div>
+        <div><div style="font-weight:700;font-size:15px">12</div><div style="font-size:10px;color:#888">成就</div></div>
+        <div><div style="font-weight:700;font-size:15px">8</div><div style="font-size:10px;color:#888">闯关</div></div>
+      </div>
+      <div style="margin-bottom:8px"><div class="wf-el btn-like" style="text-align:left;padding:8px 12px;font-size:12px;background:#e3f2fd">👤 个人信息</div></div>
+      <div style="margin-bottom:8px"><div class="wf-el btn-like" style="text-align:left;padding:8px 12px;font-size:12px">🔑 修改密码</div></div>
+      <div style="margin-bottom:8px"><div class="wf-el btn-like" style="text-align:left;padding:8px 12px;font-size:12px">📚 学习记录</div></div>
+      <div style="margin-top:16px;border-top:1px solid #eee;padding-top:12px">
+        <div style="font-size:11px;color:#2979ff;margin-bottom:6px;cursor:default">⚡ 积分中心</div>
+        <div style="font-size:11px;color:#2979ff;cursor:default">🏆 我的成就</div>
+      </div>
+      <div class="wf-el btn-like" style="text-align:center;padding:8px;font-size:12px;margin-top:12px;color:#e53935">退出登录</div>
+
+      <div class="ann func" style="position:absolute;top:-8px;right:-8px;max-width:175px">【功能】左侧信息卡+导航菜单+快捷入口；右侧内容区</div>
+      <div class="ann data" style="position:absolute;top:20px;right:calc(100% + 14px);max-width:165px">【数据】头像URL/昵称/年级专业/学号；积分/成就/闯关统计</div>
+      <div class="ann btn" style="position:absolute;bottom:50px;right:calc(100% + 14px);max-width:155px">【按钮】导航→切换内容区；退出→POST /api/user/logout</div>
+      <div class="ann-badge func" style="top:-8px;right:-8px">1</div>
+      <div class="ann-badge data" style="top:18px;left:-8px">2</div>
+      <div class="ann-badge btn" style="bottom:48px;left:-8px">3</div>
+    </div>
+
+    <!-- 右侧内容区 -->
+    <div class="ann-wrapper" style="flex:1;position:relative">
+      <div style="font-weight:700;font-size:14px;margin-bottom:14px">个人信息</div>
+      <div class="grid-2" style="gap:12px">
+        <div><div class="wf-el" style="font-size:11px;margin-bottom:2px;border:none;padding:0;background:transparent">昵称</div><div class="wf-el input" style="padding:6px 10px;font-size:12px">小明</div></div>
+        <div><div class="wf-el" style="font-size:11px;margin-bottom:2px;border:none;padding:0;background:transparent">手机号</div><div class="wf-el input" style="padding:6px 10px;font-size:12px">138****1234</div></div>
+        <div><div class="wf-el" style="font-size:11px;margin-bottom:2px;border:none;padding:0;background:transparent">邮箱</div><div class="wf-el input" style="padding:6px 10px;font-size:12px">xiaoming@edu.cn</div></div>
+        <div><div class="wf-el" style="font-size:11px;margin-bottom:2px;border:none;padding:0;background:transparent">年级</div><div class="wf-el input" style="padding:6px 10px;font-size:12px">大二 ▼</div></div>
+        <div style="grid-column:span 2"><div class="wf-el" style="font-size:11px;margin-bottom:2px;border:none;padding:0;background:transparent">专业</div><div class="wf-el input" style="padding:6px 10px;font-size:12px">软件工程</div></div>
+      </div>
+      <div class="wf-el btn-like" style="padding:8px;font-size:12px;margin-top:14px;background:#2979ff;color:#fff;width:120px;text-align:center">保存修改</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="dot func"></span>界面功能说明</div>
+    <div class="legend-item"><span class="dot data"></span>数据类型/格式</div>
+    <div class="legend-item"><span class="dot btn"></span>按钮功能说明</div>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================== -->
+<!-- 6.1.8 智能客服模块 -->
+<!-- ================================================================== -->
+<div class="page" id="p8">
+<div class="wireframe">
+  <div class="wf-title-bar">
+    <span class="title">6.1.8 智能客服模块</span>
+    <span class="id">VC801</span>
+  </div>
+
+  <div class="layout-row" style="gap:0;height:420px">
+    <!-- 左侧会话列表 -->
+    <div class="ann-wrapper" style="width:200px;flex-shrink:0;border-right:1px solid #ddd;position:relative">
+      <div style="padding:10px 12px;border-bottom:1px solid #eee;font-weight:600;font-size:12px">历史会话</div>
+      <div style="padding:8px 12px;background:#e3f2fd;font-size:11px;border-bottom:1px solid #eee;cursor:default">什么是刷单诈骗？</div>
+      <div style="padding:8px 12px;font-size:11px;border-bottom:1px solid #eee;cursor:default">如何识别AI诈骗</div>
+      <div style="padding:8px 12px;font-size:11px;border-bottom:1px solid #eee;cursor:default">校园贷如何防范</div>
+      <div style="padding:8px 12px;padding-top:12px"><div class="wf-el btn-like" style="padding:4px;font-size:11px">＋ 新会话</div></div>
+      <div class="ann func" style="position:absolute;top:-8px;right:-8px;max-width:160px">【功能】历史会话列表：展示会话标题+最后更新时间</div>
+      <div class="ann-badge func" style="top:-8px;right:-8px">1</div>
+    </div>
+
+    <!-- 右侧聊天区 -->
+    <div class="ann-wrapper" style="flex:1;position:relative;display:flex;flex-direction:column">
+      <div style="padding:10px 14px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center">
+        <div><span style="font-weight:600;font-size:13px">反诈助手</span> <span style="font-size:10px;color:#43a047">● 在线</span></div>
+        <div class="wf-el btn-like" style="padding:2px 10px;font-size:11px">清空对话</div>
+      </div>
+      <div style="flex:1;padding:14px;overflow-y:auto">
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <div style="width:28px;height:28px;border-radius:50%;background:#2979ff;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px">助</div>
+          <div style="flex:1;background:#f5f5f5;padding:8px 12px;border-radius:0 8px 8px 8px;font-size:12px">你好！我是反诈学习助手，有什么可以帮助你的吗？<br><br>🔹 什么是刷单诈骗？<br>🔹 如何识别AI换脸诈骗？<br>🔹 收到可疑短信怎么办？</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-direction:row-reverse">
+          <div style="width:28px;height:28px;border-radius:50%;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:10px">我</div>
+          <div style="background:#e3f2fd;padding:8px 12px;border-radius:8px 0 8px 8px;font-size:12px;max-width:70%">什么是刷单诈骗？能详细解释一下吗？</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <div style="width:28px;height:28px;border-radius:50%;background:#2979ff;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px">助</div>
+          <div style="flex:1;background:#f5f5f5;padding:8px 12px;border-radius:0 8px 8px 8px;font-size:12px">
+            <b>刷单诈骗</b>是常见的网络诈骗类型之一。诈骗分子通过以下方式实施诈骗：<br><br>
+            1️⃣ 发布虚假兼职信息，承诺高额返利<br>
+            2️⃣ 前几单小额返利获取信任<br>
+            3️⃣ 以大额订单为由要求转账<br><br>
+            <b>防范要点</b>：所有要求垫资的刷单都是诈骗！
+            <div style="margin-top:6px"><span style="font-size:10px;color:#2979ff;cursor:default">👍 有帮助</span> <span style="font-size:10px;color:#999;margin-left:10px;cursor:default">👎 没有帮助</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="border-top:1px solid #eee;padding:10px 14px;display:flex;gap:8px">
+        <div class="wf-el input" style="flex:1;padding:8px 12px;font-size:12px">输入你的问题... (Ctrl+Enter发送)</div>
+        <div class="wf-el btn-like" style="padding:8px 20px;font-size:12px;background:#2979ff;color:#fff">发送</div>
+      </div>
+      <div class="ann data" style="position:absolute;top:50px;right:calc(100% + 14px);max-width:175px">【数据】消息:role(user/assistant)+content+timestamp；反馈:1满意/-1不满意</div>
+      <div class="ann btn" style="position:absolute;bottom:55px;left:calc(100% + 14px);max-width:165px">【按钮】发送→POST /api/chat/ask；反馈→提交反馈</div>
+      <div class="ann-badge data" style="top:48px;right:-8px">2</div>
+      <div class="ann-badge btn" style="bottom:53px;left:-8px">3</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="dot func"></span>界面功能说明</div>
+    <div class="legend-item"><span class="dot data"></span>数据类型/格式</div>
+    <div class="legend-item"><span class="dot btn"></span>按钮功能说明</div>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================== -->
+<!-- 6.1.9 智能推荐模块 -->
+<!-- ================================================================== -->
+<div class="page" id="p9">
+<div class="wireframe">
+  <div class="wf-title-bar">
+    <span class="title">6.1.9 智能推荐模块</span>
+    <span class="id">VC901</span>
+  </div>
+
+  <div class="ann-wrapper" style="position:relative">
+    <!-- 用户画像区 -->
+    <div style="display:flex;gap:16px;margin-bottom:20px;padding:14px;background:#e3f2fd;border:1px solid #bbdefb;border-radius:6px">
+      <div style="flex:1">
+        <div style="font-size:12px;color:#555"><b>当前阶段：</b><span style="color:#2979ff;font-weight:700">成长期</span></div>
+        <div style="font-size:12px;color:#555;margin-top:4px"><b>知识水平：</b>68 分</div>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:12px;color:#555"><b>薄弱环节：</b></div>
+        <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
+          <span class="wf-el tag" style="background:#ffebee;color:#e53935">冒充公检法</span>
+          <span class="wf-el tag" style="background:#fff3e0;color:#e65100">投资理财</span>
+          <span class="wf-el tag" style="background:#fff8e1">AI换脸</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 标签页 -->
+    <div class="layout-row" style="gap:8px;margin-bottom:14px">
+      <div class="wf-el btn-like" style="padding:4px 18px;font-size:12px;background:#e3f2fd;border-color:#2979ff">案例推荐</div>
+      <div class="wf-el btn-like" style="padding:4px 18px;font-size:12px">资讯推荐</div>
+      <div class="wf-el btn-like" style="padding:4px 18px;font-size:12px">闯关推荐</div>
+    </div>
+
+    <!-- 推荐卡片 -->
+    <div class="grid-3" style="gap:14px">
+      <div class="wf-el card" style="padding:16px">
+        <div style="width:100%;height:50px;background:linear-gradient(135deg,#e53935,#ff7043);border-radius:4px;margin-bottom:8px"></div>
+        <div style="font-weight:600;font-size:12px">冒充公检法诈骗</div>
+        <div style="font-size:10px;color:#2979ff;margin:4px 0">根据你的薄弱环节推荐</div>
+        <div style="font-size:10px;color:#888">等级：★★★☆☆ · 观看 1.2k</div>
+        <span class="wf-el tag" style="font-size:9px;background:#ffebee;color:#e53935">冒充公检法</span>
+      </div>
+      <div class="wf-el card" style="padding:16px">
+        <div style="width:100%;height:50px;background:linear-gradient(135deg,#ff6d00,#ffa726);border-radius:4px;margin-bottom:8px"></div>
+        <div style="font-weight:600;font-size:12px">投资理财防骗指南</div>
+        <div style="font-size:10px;color:#2979ff;margin:4px 0">基于你的浏览历史推荐</div>
+        <div style="font-size:10px;color:#888">等级：★★☆☆☆ · 观看 856</div>
+        <span class="wf-el tag" style="font-size:9px;background:#fff3e0;color:#e65100">投资理财</span>
+      </div>
+      <div class="wf-el card" style="padding:16px">
+        <div style="width:100%;height:50px;background:linear-gradient(135deg,#2979ff,#42a5f5);border-radius:4px;margin-bottom:8px"></div>
+        <div style="font-weight:600;font-size:12px">AI换脸识别测试</div>
+        <div style="font-size:10px;color:#2979ff;margin:4px 0">闯关未通过，建议再试</div>
+        <div style="font-size:10px;color:#888">类型：闯关 · +15积分</div>
+        <span class="wf-el tag" style="font-size:9px">AI换脸</span>
+      </div>
+    </div>
+
+    <div class="ann func" style="position:absolute;top:-8px;right:-8px;max-width:185px">【功能】基于用户画像和混合推荐算法(内容推荐+协同过滤+序列模式挖掘)</div>
+    <div class="ann data" style="position:absolute;top:20px;right:calc(100% + 14px);max-width:175px">【数据】用户画像：生命周期阶段(newbie/growing/mature)+知识水平+弱点标签</div>
+    <div class="ann-badge func" style="top:-8px;right:-8px">1</div>
+    <div class="ann-badge data" style="top:18px;left:-8px">2</div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="dot func"></span>界面功能说明</div>
+    <div class="legend-item"><span class="dot data"></span>数据类型/格式</div>
+    <div class="legend-item"><span class="dot btn"></span>按钮功能说明</div>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================== -->
+<!-- 6.1.10 积分成就模块 -->
+<!-- ================================================================== -->
+<div class="page" id="p10">
+<div class="wireframe">
+  <div class="wf-title-bar">
+    <span class="title">6.1.10 积分成就模块</span>
+    <span class="id">VC1001 / VC1002</span>
+  </div>
+
+  <div class="layout-row" style="gap:20px">
+    <!-- 积分中心 -->
+    <div class="layout-col ann-wrapper" style="position:relative;flex:1">
+      <div style="text-align:center;font-weight:700;font-size:14px;color:#555;margin-bottom:12px">积分中心</div>
+      <div style="border:1px solid var(--wf-border);border-radius:6px;padding:20px;text-align:center">
+        <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#ffd700,#ffb300);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;font-weight:700">Lv3</div>
+        <div style="font-size:12px;color:#888">等级：青铜守护者</div>
+        <div style="font-size:28px;font-weight:700;margin:8px 0">1,560</div>
+        <div style="font-size:12px;color:#888">总积分 · 本周 +128</div>
+        <div style="margin:12px 0">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:#888;margin-bottom:4px"><span>Lv3</span><span>距离Lv4还差440分</span></div>
+          <div style="height:8px;background:#e0e0e0;border-radius:4px"><div style="width:56%;height:100%;background:linear-gradient(90deg,#ffd700,#ffb300);border-radius:4px"></div></div>
+        </div>
+        <div style="text-align:left;margin-top:14px">
+          <div style="font-weight:600;font-size:12px;margin-bottom:6px">积分规则</div>
+          <div style="font-size:11px;color:#555;margin-bottom:3px">• 浏览案例 +2</div>
+          <div style="font-size:11px;color:#555;margin-bottom:3px">• 完成闯关 +5~20</div>
+          <div style="font-size:11px;color:#555;margin-bottom:3px">• 发帖分享 +3</div>
+          <div style="font-size:11px;color:#555;margin-bottom:3px">• 评论互动 +1</div>
+          <div style="font-size:11px;color:#555">• 解锁成就 +5~200</div>
+        </div>
+      </div>
+      <div class="ann func" style="position:absolute;top:-8px;right:-8px;max-width:170px">【功能】等级徽章+积分统计+进度条+积分规则+等级特权预览</div>
+      <div class="ann data" style="position:absolute;top:20px;right:calc(100% + 14px);max-width:165px">【数据】等级:Lv1~10；积分:INT；成就条件:枚举类型(login_count等)</div>
+      <div class="ann-badge func" style="top:-8px;right:-8px">1</div>
+      <div class="ann-badge data" style="top:18px;left:-8px">2</div>
+    </div>
+
+    <!-- 成就中心 -->
+    <div class="layout-col ann-wrapper" style="position:relative;flex:1">
+      <div style="text-align:center;font-weight:700;font-size:14px;color:#555;margin-bottom:12px">成就中心</div>
+      <div style="margin-bottom:10px;display:flex;gap:6px">
+        <div class="wf-el btn-like" style="padding:4px 14px;font-size:12px;background:#e3f2fd">全部</div>
+        <div class="wf-el btn-like" style="padding:4px 14px;font-size:12px">已解锁</div>
+        <div class="wf-el btn-like" style="padding:4px 14px;font-size:12px">未解锁</div>
+      </div>
+      <div style="border:1px solid var(--wf-border);border-radius:6px;padding:14px">
+        <div style="display:flex;gap:14px;margin-bottom:4px">
+          <div class="wf-el card" style="flex:1;text-align:center;padding:12px;background:linear-gradient(135deg,#fff8e1,#fff3e0)">
+            <div style="font-size:20px">🎓</div>
+            <div style="font-weight:600;font-size:11px;margin:4px 0">初识反诈</div>
+            <div style="font-size:9px;color:#888">首次登录</div>
+          </div>
+          <div class="wf-el card" style="flex:1;text-align:center;padding:12px;background:linear-gradient(135deg,#fff8e1,#fff3e0)">
+            <div style="font-size:20px">📖</div>
+            <div style="font-weight:600;font-size:11px;margin:4px 0">勤学苦练</div>
+            <div style="font-size:9px;color:#888">浏览10个案例</div>
+          </div>
+          <div class="wf-el card" style="flex:1;text-align:center;padding:12px;background:#fff">
+            <div style="font-size:20px;opacity:.4">🔒</div>
+            <div style="font-weight:600;font-size:11px;margin:4px 0;color:#ccc">满分学霸</div>
+            <div style="font-size:9px;color:#ddd">闯关满分</div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:10px;color:#888;text-align:right;margin-top:4px">已解锁 2/7 · 待解锁 5</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="dot func"></span>界面功能说明</div>
+    <div class="legend-item"><span class="dot data"></span>数据类型/格式</div>
+    <div class="legend-item"><span class="dot btn"></span>按钮功能说明</div>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================== -->
+<!-- 6.1.11 后台管理模块 -->
+<!-- ================================================================== -->
+<div class="page" id="p11">
+<div class="wireframe">
+  <div class="wf-title-bar">
+    <span class="title">6.1.11 后台管理模块</span>
+    <span class="id">VC1101</span>
+  </div>
+
+  <div class="ann-wrapper" style="position:relative">
+    <!-- 操作栏 -->
+    <div class="layout-row" style="gap:8px;justify-content:flex-end;margin-bottom:16px">
+      <div class="wf-el btn-like" style="padding:6px 16px;font-size:12px">🔄 刷新数据</div>
+      <div class="wf-el btn-like" style="padding:6px 16px;font-size:12px;background:#43a047;color:#fff">📥 导出Excel</div>
+      <div class="wf-el btn-like" style="padding:6px 16px;font-size:12px;background:#fb8c00;color:#fff">📄 导出PDF</div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="grid-6" style="gap:10px;margin-bottom:16px">
+      <div class="wf-el card" style="text-align:center;padding:14px 8px;border-top:3px solid #2979ff">
+        <div style="font-size:20px;font-weight:700;color:#2979ff">1,286</div>
+        <div style="font-size:10px;color:#888">总用户数</div>
+      </div>
+      <div class="wf-el card" style="text-align:center;padding:14px 8px;border-top:3px solid #43a047">
+        <div style="font-size:20px;font-weight:700;color:#43a047">368</div>
+        <div style="font-size:10px;color:#888">今日活跃</div>
+      </div>
+      <div class="wf-el card" style="text-align:center;padding:14px 8px;border-top:3px solid #7b1fa2">
+        <div style="font-size:20px;font-weight:700;color:#7b1fa2">4,521</div>
+        <div style="font-size:10px;color:#888">今日浏览量</div>
+      </div>
+      <div class="wf-el card" style="text-align:center;padding:14px 8px;border-top:3px solid #ff6d00">
+        <div style="font-size:20px;font-weight:700;color:#ff6d00">86</div>
+        <div style="font-size:10px;color:#888">案例总数</div>
+      </div>
+      <div class="wf-el card" style="text-align:center;padding:14px 8px;border-top:3px solid #e53935">
+        <div style="font-size:20px;font-weight:700;color:#e53935">72.5</div>
+        <div style="font-size:10px;color:#888">平均得分</div>
+      </div>
+      <div class="wf-el card" style="text-align:center;padding:14px 8px;border-top:3px solid #1abc9c">
+        <div style="font-size:20px;font-weight:700;color:#1abc9c">425</div>
+        <div style="font-size:10px;color:#888">闯关完成</div>
+      </div>
+    </div>
+
+    <!-- 图表区 -->
+    <div class="layout-row" style="gap:12px;margin-bottom:16px">
+      <div style="flex:2;border:1px solid var(--wf-border);border-radius:4px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-weight:600;font-size:12px">访问量趋势</div>
+          <div style="display:flex;gap:4px">
+            <div class="wf-el btn-like" style="padding:2px 8px;font-size:10px;background:#e3f2fd">7天</div>
+            <div class="wf-el btn-like" style="padding:2px 8px;font-size:10px">14天</div>
+            <div class="wf-el btn-like" style="padding:2px 8px;font-size:10px">30天</div>
+          </div>
+        </div>
+        <div style="height:120px;background:#fafafa;border:1px solid #eee;border-radius:4px;display:flex;align-items:flex-end;padding:0 8px">
+          <div style="flex:1;height:30%;background:#2979ff;opacity:.7;margin:0 2px;border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:45%;background:#2979ff;opacity:.7;margin:0 2px;border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:55%;background:#2979ff;opacity:.7;margin:0 2px;border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:40%;background:#2979ff;opacity:.7;margin:0 2px;border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:70%;background:#2979ff;opacity:.7;margin:0 2px;border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:60%;background:#2979ff;opacity:.7;margin:0 2px;border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:80%;background:#2979ff;opacity:.7;margin:0 2px;border-radius:2px 2px 0 0"></div>
+        </div>
+      </div>
+      <div style="flex:1;border:1px solid var(--wf-border);border-radius:4px;padding:14px">
+        <div style="font-weight:600;font-size:12px;margin-bottom:10px">诈骗类型分布</div>
+        <div style="height:120px;display:flex;align-items:center;justify-content:center;gap:2px">
+          <div style="width:30px;height:80%;background:#e53935;border-radius:4px 0 0 4px;position:relative"><span style="position:absolute;bottom:-16px;font-size:9px;left:-4px">冒充</span></div>
+          <div style="width:30px;height:60%;background:#ff6d00"><span style="position:absolute;bottom:-16px;font-size:9px;left:-4px">刷单</span></div>
+          <div style="width:30px;height:45%;background:#ffb300"><span style="position:absolute;bottom:-16px;font-size:9px;left:-4px">投资</span></div>
+          <div style="width:30px;height:35%;background:#43a047;border-radius:0 4px 4px 0"><span style="position:absolute;bottom:-16px;font-size:9px;left:-4px">校园</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOP案例 -->
+    <div style="border:1px solid var(--wf-border);border-radius:4px;padding:14px">
+      <div style="font-weight:600;font-size:12px;margin-bottom:10px">TOP案例排行榜</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <tr style="background:#f5f5f5"><th style="padding:6px 8px;border:1px solid #ddd;text-align:center">排名</th><th style="padding:6px 8px;border:1px solid #ddd;text-align:left">案例标题</th><th style="padding:6px 8px;border:1px solid #ddd;text-align:center">类型</th><th style="padding:6px 8px;border:1px solid #ddd;text-align:right">浏览量</th><th style="padding:6px 8px;border:1px solid #ddd;text-align:right">点赞</th><th style="padding:6px 8px;border:1px solid #ddd;text-align:right">热度</th></tr>
+        <tr><td style="padding:6px 8px;border:1px solid #ddd;text-align:center;font-weight:700;color:#ffd700">1</td><td style="padding:6px 8px;border:1px solid #ddd">冒充公检法诈骗</td><td style="padding:6px 8px;border:1px solid #ddd;text-align:center"><span class="wf-el badge red">冒充</span></td><td style="padding:6px 8px;border:1px solid #ddd;text-align:right">21,345</td><td style="padding:6px 8px;border:1px solid #ddd;text-align:right">892</td><td style="padding:6px 8px;border:1px solid #ddd;text-align:right">95.6</td></tr>
+        <tr><td style="padding:6px 8px;border:1px solid #ddd;text-align:center;font-weight:700;color:#a8a8a8">2</td><td style="padding:6px 8px;border:1px solid #ddd">刷单返利诈骗</td><td style="padding:6px 8px;border:1px solid #ddd;text-align:center"><span class="wf-el badge orange">刷单</span></td><td style="padding:6px 8px;border:1px solid #ddd;text-align:right">18,237</td><td style="padding:6px 8px;border:1px solid #ddd;text-align:right">654</td><td style="padding:6px 8px;border:1px solid #ddd;text-align:right">87.3</td></tr>
+        <tr><td style="padding:6px 8px;border:1px solid #ddd;text-align:center;font-weight:700;color:#cd7f32">3</td><td style="padding:6px 8px;border:1px solid #ddd">校园贷诈骗</td><td style="padding:6px 8px;border:1px solid #ddd;text-align:center"><span class="wf-el badge" style="background:#e8f5e9;color:#2e7d32">校园</span></td><td style="padding:6px 8px;border:1px solid #ddd;text-align:right">12,458</td><td style="padding:6px 8px;border:1px solid #ddd;text-align:right">423</td><td style="padding:6px 8px;border:1px solid #ddd;text-align:right">72.1</td></tr>
+      </table>
+    </div>
+
+    <div class="ann func" style="position:absolute;top:-8px;right:-8px;max-width:180px">【功能】数据仪表盘：统计卡片+趋势图表+分布图表+排行榜</div>
+    <div class="ann data" style="position:absolute;top:20px;right:calc(100% + 14px);max-width:175px">【数据】统计数据来自后端 /api/statistics/*；图表使用ECharts渲染</div>
+    <div class="ann btn" style="position:absolute;bottom:55px;right:calc(100% + 14px);max-width:155px">【按钮】刷新→refreshStatistics；导出→exportDailyStatistics等</div>
+    <div class="ann-badge func" style="top:-8px;right:-8px">1</div>
+    <div class="ann-badge data" style="top:18px;left:-8px">2</div>
+    <div class="ann-badge btn" style="bottom:53px;right:-8px">3</div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="dot func"></span>界面功能说明</div>
+    <div class="legend-item"><span class="dot data"></span>数据类型/格式</div>
+    <div class="legend-item"><span class="dot btn"></span>按钮功能说明</div>
+  </div>
+</div>
+</div>
+
+</div><!-- end main -->
+
+<script>
+// Tab切换
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    this.classList.add('active');
+    document.getElementById(this.dataset.page).classList.add('active');
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  });
+});
+</script>
+
+</body>
+</html>
