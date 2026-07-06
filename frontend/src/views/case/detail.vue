@@ -74,7 +74,7 @@
           </div>
         </header>
 
-        <div class="article__content">{{ caseData.content }}</div>
+        <div class="article__content" v-html="caseData.content"></div>
 
         <section class="article__section" v-if="caseData.targetGrades || caseData.targetMajors">
           <h3 class="section__title">适用对象</h3>
@@ -91,44 +91,102 @@
         </section>
 
         <section class="article__section" v-if="caseData.scripts">
-          <h3 class="section__title">诈骗剧本</h3>
+          <h3 class="section__title">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -3px; margin-right: 6px;">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="9" y1="13" x2="15" y2="13"/>
+              <line x1="9" y1="17" x2="13" y2="17"/>
+            </svg>
+            诈骗剧本
+            <span class="scripts-summary">
+              共 {{ parsedScripts?.nodes?.length || 0 }} 步 · {{ parsedScripts?.edges?.length || 0 }} 个分支
+            </span>
+          </h3>
           <div class="scripts-viewer">
             <template v-if="parsedScripts && parsedScripts.nodes?.length">
               <div class="scripts-viewer__nodes">
                 <div
-                  v-for="node in parsedScripts.nodes"
+                  v-for="(node, idx) in parsedScripts.nodes"
                   :key="node.id"
                   class="script-node"
+                  :class="getNodeClass(node)"
                 >
-                  <div class="script-node__meta">
-                    <span class="script-node__type">{{ node.type }}</span>
-                    <span
-                      class="script-node__role"
-                      :class="`script-node__role--${String(node.role)}`"
-                    >
-                      {{ node.role }}
-                    </span>
+                  <div class="script-node__header">
+                    <div class="script-node__index">
+                      <span class="script-node__step">第 {{ idx + 1 }} 步</span>
+                    </div>
+                    <div class="script-node__badges">
+                      <span class="script-node__type" :class="`script-node__type--${node.type}`">
+                        <span class="type-dot"></span>
+                        {{ getTypeLabel(node.type) }}
+                      </span>
+                      <span
+                        class="script-node__role"
+                        :class="`script-node__role--${String(node.role)}`"
+                      >
+                        <span class="role-icon">{{ getRoleIcon(node.role) }}</span>
+                        {{ getRoleLabel(node.role) }}
+                      </span>
+                    </div>
                   </div>
+
+                  <h4 class="script-node__title" v-if="node.title">{{ node.title }}</h4>
                   <div class="script-node__content">{{ node.content }}</div>
+
                   <div v-if="node.riskTip" class="script-node__risk-tip">
-                    风险提示：{{ node.riskTip }}
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="flex-shrink: 0; margin-top: 2px;">
+                      <path d="M12 2L1 21h22L12 2zm0 4l8.5 14h-17L12 6zm-1 5v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
+                    </svg>
+                    <div>
+                      <div class="script-node__risk-label">风险提示</div>
+                      <div class="script-node__risk-text">{{ node.riskTip }}</div>
+                    </div>
+                  </div>
+
+                  <!-- 节点连接箭头（最后一个节点不显示） -->
+                  <div v-if="idx < (parsedScripts.nodes?.length || 0) - 1" class="script-node__arrow">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M6 9l6 6 6-6"/>
+                    </svg>
                   </div>
                 </div>
               </div>
 
               <div v-if="parsedScripts.edges?.length" class="scripts-viewer__edges">
-                <div class="scripts-viewer__edges-title">流程连接</div>
+                <div class="scripts-viewer__edges-title">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -3px; margin-right: 6px;">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                  </svg>
+                  流程分支（共 {{ parsedScripts.edges.length }} 条）
+                </div>
                 <div class="scripts-viewer__edges-list">
                   <div
                     v-for="(edge, idx) in parsedScripts.edges"
                     :key="(edge as any).id ?? `${edge.from}-${edge.to}-${idx}`"
                     class="script-edge"
+                    :class="getEdgeClass(edge)"
                   >
-                    <span class="script-edge__from">{{ edge.from }}</span>
-                    <span class="script-edge__arrow">→</span>
-                    <span class="script-edge__to">{{ edge.to }}</span>
-                    <span v-if="edge.label" class="script-edge__label">({{ edge.label }})</span>
-                    <span v-if="edge.condition" class="script-edge__condition">条件：{{ edge.condition }}</span>
+                    <div class="script-edge__route">
+                      <span class="script-edge__from">{{ getNodeLabel(edge.from) }}</span>
+                      <span class="script-edge__arrow" :class="edge.isSafeChoice ? 'safe' : 'risk'">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                          <path d="M5 12h14M13 5l7 7-7 7"/>
+                        </svg>
+                      </span>
+                      <span class="script-edge__to">{{ getNodeLabel(edge.to) }}</span>
+                    </div>
+                    <div class="script-edge__meta">
+                      <span v-if="edge.label" class="script-edge__label">{{ edge.label }}</span>
+                      <span v-if="edge.condition" class="script-edge__condition">触发：{{ edge.condition }}</span>
+                      <span v-if="edge.isSafeChoice === true" class="script-edge__tag script-edge__tag--safe">
+                        ✓ 安全选择
+                      </span>
+                      <span v-else-if="edge.isSafeChoice === false" class="script-edge__tag script-edge__tag--risk">
+                        ⚠ 危险选择
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -321,6 +379,73 @@ const formatScriptsFallback = (scripts: unknown) => {
   }
 }
 
+// 节点类型标签
+const getTypeLabel = (type: string) => {
+  const map: Record<string, string> = {
+    start: '开始',
+    dialog: '对话',
+    end: '结局'
+  }
+  return map[type] || type
+}
+
+// 角色标签
+const getRoleLabel = (role: string) => {
+  const map: Record<string, string> = {
+    narrator: '旁白',
+    victim: '受害者',
+    scammer: '诈骗方',
+    system: '系统'
+  }
+  return map[role] || role
+}
+
+// 角色图标
+const getRoleIcon = (role: string) => {
+  const map: Record<string, string> = {
+    narrator: '📢',
+    victim: '🙋',
+    scammer: '🎭',
+    system: '⚙️'
+  }
+  return map[role] || '👤'
+}
+
+// 节点样式类
+const getNodeClass = (node: any) => {
+  const classes: string[] = []
+  if (node.type === 'start') classes.push('script-node--start')
+  if (node.type === 'end') {
+    classes.push('script-node--end')
+    if (node.id === 'e_safe') classes.push('script-node--safe')
+    else if (node.id === 'e_risk') classes.push('script-node--risk')
+    else if (node.id === 'e_loss') classes.push('script-node--loss')
+  }
+  if (node.riskTip) classes.push('script-node--has-risk')
+  return classes.join(' ')
+}
+
+// 边样式类
+const getEdgeClass = (edge: any) => {
+  const classes: string[] = []
+  if (edge.isSafeChoice === true) classes.push('script-edge--safe')
+  else if (edge.isSafeChoice === false) classes.push('script-edge--risk')
+  return classes.join(' ')
+}
+
+// 节点显示标签（用 title 字段，没有就用 id）
+const getNodeLabel = (nodeId: string) => {
+  if (!parsedScripts.value) return nodeId
+  const node = parsedScripts.value.nodes.find(n => n.id === nodeId)
+  if (!node) return nodeId
+  if (node.title) return node.title
+  // 结局节点特殊标记
+  if (node.id === 'e_safe') return '✅ 及时脱身'
+  if (node.id === 'e_risk') return '⚠️ 继续缴费'
+  if (node.id === 'e_loss') return '❌ 平台关闭'
+  return node.type === 'start' ? '🟢 起点' : node.type === 'end' ? '🏁 结局' : `节点 ${nodeId}`
+}
+
 onMounted(() => {
   fetchCaseDetail()
   fetchRelatedCases()
@@ -475,10 +600,49 @@ watch(
 
   &__content {
     font-size: 15px;
-    line-height: 1.8;
+    line-height: 1.85;
     color: var(--text-primary);
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
+    word-break: break-word;
+
+    :deep(h1), :deep(h2), :deep(h3), :deep(h4) {
+      margin: 20px 0 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.4;
+    }
+    :deep(h3) {
+      font-size: 17px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid rgba(64, 158, 255, 0.2);
+    }
+    :deep(h4) {
+      font-size: 15px;
+      color: #1e40af;
+    }
+    :deep(p) {
+      margin: 0 0 12px;
+      color: #374151;
+    }
+    :deep(strong) {
+      color: #dc2626;
+      font-weight: 600;
+    }
+    :deep(ul), :deep(ol) {
+      margin: 8px 0 12px;
+      padding-left: 24px;
+    }
+    :deep(li) {
+      margin-bottom: 4px;
+      color: #374151;
+    }
+    :deep(code) {
+      background: rgba(64, 158, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #1e40af;
+      font-family: 'Monaco', 'Menlo', monospace;
+    }
   }
 
   &__section {
@@ -523,129 +687,355 @@ watch(
   background: #ffffff;
   border: 1px solid rgba(64, 158, 255, 0.14);
   border-radius: 12px;
-  padding: 16px;
+  padding: 20px;
   overflow-x: auto;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 }
 
+.scripts-summary {
+  font-size: 13px;
+  font-weight: normal;
+  color: var(--text-secondary);
+  margin-left: 12px;
+  padding: 2px 10px;
+  background: rgba(64, 158, 255, 0.08);
+  border-radius: 12px;
+}
+
 .scripts-viewer__nodes {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  position: relative;
 }
 
 .script-node {
-  background: var(--bg-primary);
-  border: 1px solid rgba(64, 158, 255, 0.14);
-  border-radius: 16px;
-  padding: 14px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
-}
+  position: relative;
+  background: linear-gradient(135deg, #ffffff 0%, #fafbff 100%);
+  border: 2px solid rgba(64, 158, 255, 0.18);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 4px 16px rgba(64, 158, 255, 0.06);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-.script-node__meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-}
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(64, 158, 255, 0.12);
+    border-color: rgba(64, 158, 255, 0.4);
+  }
 
-.script-node__type {
-  font-size: 12px;
-  color: var(--text-placeholder);
-}
+  // 开始节点 - 绿色
+  &--start {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border-color: #10b981;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.12);
+  }
 
-.script-node__role {
-  font-size: 12px;
-  padding: 2px 10px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-}
+  // 结局节点 - 默认灰色
+  &--end {
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    border-color: #6b7280;
+  }
 
-.script-node__role--narrator,
-.script-node__role--victim,
-.script-node__role--scammer {
-  border-color: rgba(64, 158, 255, 0.16);
-}
+  // 安全结局 - 绿色
+  &--safe {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border-color: #10b981;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15);
+  }
 
-.script-node__role--narrator {
-  color: hsl(220, 10%, 45%);
-  background: #f3f4f6;
-}
+  // 风险结局 - 黄色
+  &--risk {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border-color: #f59e0b;
+    box-shadow: 0 4px 16px rgba(245, 158, 11, 0.15);
+  }
 
-.script-node__role--victim {
-  color: hsl(38, 92%, 35%);
-  background: #fef3c7;
-}
+  // 损失结局 - 红色
+  &--loss {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border-color: #ef4444;
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.15);
+  }
 
-.script-node__role--scammer {
-  color: hsl(0, 65%, 55%);
-  background: #fee2e2;
-}
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
 
-.script-node__content {
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--text-primary);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
+  &__index {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
 
-.script-node__risk-tip {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border-left: 4px solid rgba(245, 158, 11, 0.6);
-  background: rgba(254, 243, 199, 0.6);
-  color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 1.6;
+  &__step {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #1e40af;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    border-radius: 12px;
+    letter-spacing: 0.3px;
+  }
+
+  &__badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  &__type {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(107, 114, 128, 0.1);
+    color: #4b5563;
+
+    &--start {
+      background: rgba(16, 185, 129, 0.12);
+      color: #047857;
+    }
+    &--dialog {
+      background: rgba(59, 130, 246, 0.12);
+      color: #1e40af;
+    }
+    &--end {
+      background: rgba(107, 114, 128, 0.12);
+      color: #374151;
+    }
+  }
+
+  .type-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  &__role {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+
+    &--narrator {
+      color: hsl(220, 10%, 40%);
+      background: #f3f4f6;
+      border-color: rgba(0, 0, 0, 0.06);
+    }
+    &--victim {
+      color: hsl(38, 92%, 30%);
+      background: #fef3c7;
+      border-color: rgba(245, 158, 11, 0.2);
+    }
+    &--scammer {
+      color: hsl(0, 65%, 45%);
+      background: #fee2e2;
+      border-color: rgba(239, 68, 68, 0.2);
+    }
+    &--system {
+      color: hsl(220, 60%, 35%);
+      background: #dbeafe;
+      border-color: rgba(59, 130, 246, 0.2);
+    }
+  }
+
+  .role-icon {
+    font-size: 12px;
+  }
+
+  &__title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 8px;
+    line-height: 1.4;
+  }
+
+  &__content {
+    font-size: 14px;
+    line-height: 1.75;
+    color: var(--text-primary);
+    word-break: break-word;
+  }
+
+  &__risk-tip {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border-left: 4px solid #ef4444;
+    background: linear-gradient(135deg, #fef2f2 0%, #fff5f5 100%);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    color: #991b1b;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  &__risk-label {
+    font-weight: 600;
+    font-size: 12px;
+    color: #dc2626;
+    margin-bottom: 2px;
+  }
+
+  &__risk-text {
+    color: #7f1d1d;
+  }
+
+  &__arrow {
+    position: absolute;
+    bottom: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #94a3b8;
+    z-index: 1;
+    background: #f8fafc;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  }
 }
 
 .scripts-viewer__edges {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border-color);
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 2px dashed var(--border-color);
 }
 
 .scripts-viewer__edges-title {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
 }
 
 .scripts-viewer__edges-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 10px;
 }
 
 .script-edge {
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-radius: 12px;
-  border: 1px solid rgba(64, 158, 255, 0.14);
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-size: 13px;
-  line-height: 1.5;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
-}
+  border: 1.5px solid rgba(64, 158, 255, 0.18);
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s;
 
-.script-edge__arrow {
-  margin: 0 6px;
-  color: var(--text-secondary);
-}
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
 
-.script-edge__label {
-  margin-left: 8px;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
+  &--safe {
+    background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+    border-color: rgba(16, 185, 129, 0.4);
+  }
 
-.script-edge__condition {
-  margin-left: 8px;
-  color: var(--text-secondary);
-  font-size: 12px;
+  &--risk {
+    background: linear-gradient(135deg, #fef2f2 0%, #fff5f5 100%);
+    border-color: rgba(239, 68, 68, 0.4);
+  }
+
+  &__route {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  &__from, &__to {
+    flex: 1;
+    font-size: 12px;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 6px;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+
+    &.safe {
+      color: #10b981;
+    }
+    &.risk {
+      color: #ef4444;
+    }
+  }
+
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  &__label {
+    padding: 2px 8px;
+    background: rgba(64, 158, 255, 0.08);
+    color: #1e40af;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  &__condition {
+    color: var(--text-secondary);
+    font-size: 11px;
+  }
+
+  &__tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: auto;
+
+    &--safe {
+      background: rgba(16, 185, 129, 0.15);
+      color: #047857;
+    }
+    &--risk {
+      background: rgba(239, 68, 68, 0.15);
+      color: #b91c1c;
+    }
+  }
 }
 
 .scripts-content {
