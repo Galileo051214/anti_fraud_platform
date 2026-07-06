@@ -5,6 +5,7 @@ export interface PostVO {
   userId: number
   title: string
   content: string
+  imageUrls?: string[]
   postType: string
   postTypeName: string
   tagIds?: number[]
@@ -49,6 +50,7 @@ export interface CreatePostRequest {
   title: string
   content: string
   postType: string
+  imageUrls?: string[]
   tagIds?: number[]
 }
 

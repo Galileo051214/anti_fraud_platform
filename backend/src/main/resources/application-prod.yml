@@ -54,7 +54,40 @@ app:
 deepseek:
   api-url: ${DEEPSEEK_API_URL:https://api.deepseek.com/chat/completions}
   api-key: ${DEEPSEEK_API_KEY:}
-  model: ${DEEPSEEK_MODEL:deepseek-chat}
+  model: ${DEEPSEEK_MODEL:deepseek-v4-flash}
   max-tokens: ${DEEPSEEK_MAX_TOKENS:2048}
   temperature: ${DEEPSEEK_TEMPERATURE:0.7}
   timeout-ms: ${DEEPSEEK_TIMEOUT_MS:15000}
+
+websearch:
+  enabled: ${WEBSEARCH_ENABLED:true}
+  provider: ${WEBSEARCH_PROVIDER:auto}
+  api-url: ${WEBSEARCH_API_URL:https://api.bing.microsoft.com/v7.0/search}
+  api-key: ${WEBSEARCH_API_KEY:}
+  api-key-header: ${WEBSEARCH_API_KEY_HEADER:Ocp-Apim-Subscription-Key}
+  allowed-domains: ${WEBSEARCH_ALLOWED_DOMAINS:mps.gov.cn,gov.cn,12321.cn,cac.gov.cn,miit.gov.cn,pbc.gov.cn,court.gov.cn}
+  max-results: ${WEBSEARCH_MAX_RESULTS:5}
+  cache-ttl-seconds: ${WEBSEARCH_CACHE_TTL_SECONDS:1800}
+  timeout-ms: ${WEBSEARCH_TIMEOUT_MS:8000}
+  freshness-days: ${WEBSEARCH_FRESHNESS_DAYS:30}
+  content-max-chars: ${WEBSEARCH_CONTENT_MAX_CHARS:1200}
+  firecrawl:
+    api-url: ${FIRECRAWL_API_URL:https://api.firecrawl.dev/v2/search}
+    api-key: ${FIRECRAWL_API_KEY:}
+    scrape-content: ${FIRECRAWL_SCRAPE_CONTENT:true}
+  exa:
+    api-url: ${EXA_API_URL:https://api.exa.ai/search}
+    api-key: ${EXA_API_KEY:}
+    max-age-hours: ${EXA_MAX_AGE_HOURS:720}
+    content-verbosity: ${EXA_CONTENT_VERBOSITY:compact}
+  mcp:
+    enabled: ${WEBSEARCH_MCP_ENABLED:true}
+    protocol-version: ${WEBSEARCH_MCP_PROTOCOL_VERSION:2025-06-18}
+    request-timeout-ms: ${WEBSEARCH_MCP_REQUEST_TIMEOUT_MS:20000}
+    firecrawl:
+      url: ${FIRECRAWL_MCP_URL:https://mcp.firecrawl.dev/{apiKey}/v2/mcp}
+      search-tool: ${FIRECRAWL_MCP_SEARCH_TOOL:firecrawl_search}
+    exa:
+      url: ${EXA_MCP_URL:https://mcp.exa.ai/mcp}
+      api-key-header: ${EXA_MCP_API_KEY_HEADER:x-api-key}
+      search-tool: ${EXA_MCP_SEARCH_TOOL:web_search_exa}

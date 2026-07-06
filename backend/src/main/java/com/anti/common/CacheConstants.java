@@ -144,6 +144,14 @@ public class CacheConstants {
     public static String getRecommendKey(Long userId, int limit) {
         return RECOMMEND_PREFIX + userId + ":limit:" + limit;
     }
+
+    /**
+     * 获取按推荐类型区分的推荐结果缓存Key
+     */
+    public static String getRecommendKey(Long userId, int limit, String itemType) {
+        String normalizedType = itemType == null || itemType.isBlank() ? "all" : itemType.trim();
+        return RECOMMEND_PREFIX + userId + ":type:" + normalizedType + ":limit:" + limit;
+    }
     
     /**
      * 获取用户兴趣分析缓存Key

@@ -339,3 +339,94 @@ SELECT
   1
 WHERE NOT EXISTS (SELECT 1 FROM challenge WHERE title = '情景模拟：冒充公检法催缴罚款');
 
+-- =========================
+-- Agent模拟挑战：大学生高频场景
+-- =========================
+INSERT INTO challenge
+  (title, description, level_order, difficulty, type, passing_score, score_reward, content, scripts, agent_config, status)
+SELECT
+  'Agent模拟：刷单返利陷阱',
+  '骗子以轻松兼职、高额返利为诱饵，测试你能否拒绝垫资转账。',
+  101, 3, 'agent_scenario', 75, 100,
+  NULL, NULL,
+  CAST('{"fraudType":"刷单返利","scenarioBrief":"对方冒充兼职派单员，承诺先做小额任务返利，再诱导垫付大额资金。","persona":"兼职派单员/任务导师","riskPoints":["轻松高薪","先小额返利建立信任","要求垫资做任务","以连单/冻结为由继续转账"],"safeActions":["拒绝垫资刷单","停止转账","保存聊天和转账证据","向110或学校保卫处求助"]}' AS JSON),
+  1
+WHERE NOT EXISTS (SELECT 1 FROM challenge WHERE title = 'Agent模拟：刷单返利陷阱');
+
+INSERT INTO challenge
+  (title, description, level_order, difficulty, type, passing_score, score_reward, content, scripts, agent_config, status)
+SELECT
+  'Agent模拟：冒充客服退款',
+  '骗子冒充平台客服，以订单异常、退款理赔为由诱导你泄露验证码或转账。',
+  102, 3, 'agent_scenario', 75, 100,
+  NULL, NULL,
+  CAST('{"fraudType":"冒充客服退款","scenarioBrief":"对方声称订单或快递出现问题，需要你按指引完成退款验证。","persona":"电商/快递平台客服","riskPoints":["声称订单异常","要求离开官方平台沟通","索要验证码","诱导屏幕共享或转账验证"],"safeActions":["回到官方App核验","拒绝验证码和屏幕共享","不向陌生账户转账","联系平台官方客服"]}' AS JSON),
+  1
+WHERE NOT EXISTS (SELECT 1 FROM challenge WHERE title = 'Agent模拟：冒充客服退款');
+
+INSERT INTO challenge
+  (title, description, level_order, difficulty, type, passing_score, score_reward, content, scripts, agent_config, status)
+SELECT
+  'Agent模拟：虚假兼职招聘',
+  '骗子以校园兼职、远程实习为名，诱导你缴纳培训费、保证金或提供敏感信息。',
+  103, 2, 'agent_scenario', 75, 100,
+  NULL, NULL,
+  CAST('{"fraudType":"虚假兼职","scenarioBrief":"对方发布看似正规兼职岗位，要求先缴费、刷流水或提交敏感资料。","persona":"招聘专员/学长学姐","riskPoints":["高薪低门槛","入职前收费","要求刷流水","索要身份证银行卡"],"safeActions":["拒绝入职前收费","核验企业和招聘渠道","不提供银行卡密码验证码","向学校就业部门核实"]}' AS JSON),
+  1
+WHERE NOT EXISTS (SELECT 1 FROM challenge WHERE title = 'Agent模拟：虚假兼职招聘');
+
+INSERT INTO challenge
+  (title, description, level_order, difficulty, type, passing_score, score_reward, content, scripts, agent_config, status)
+SELECT
+  'Agent模拟：校园贷征信恐吓',
+  '骗子以注销校园贷、修复征信为由制造恐慌，诱导你贷款转账。',
+  104, 4, 'agent_scenario', 75, 100,
+  NULL, NULL,
+  CAST('{"fraudType":"校园贷/征信","scenarioBrief":"对方声称你的校园贷或征信存在异常，需要配合注销账户或清空额度。","persona":"金融平台风控客服","riskPoints":["征信异常恐吓","要求下载会议App共享屏幕","诱导贷款提现转账","要求提供银行卡和验证码"],"safeActions":["通过官方金融机构核验","拒绝屏幕共享和远程控制","不贷款转账给个人账户","及时报警并联系银行"]}' AS JSON),
+  1
+WHERE NOT EXISTS (SELECT 1 FROM challenge WHERE title = 'Agent模拟：校园贷征信恐吓');
+
+INSERT INTO challenge
+  (title, description, level_order, difficulty, type, passing_score, score_reward, content, scripts, agent_config, status)
+SELECT
+  'Agent模拟：游戏账号交易',
+  '骗子以收购账号、低价装备为诱饵，引导你去假平台交易并缴纳解冻费。',
+  105, 2, 'agent_scenario', 75, 100,
+  NULL, NULL,
+  CAST('{"fraudType":"游戏账号交易","scenarioBrief":"对方联系你买卖账号或装备，诱导进入假交易平台并要求缴纳保证金。","persona":"游戏买家/平台客服","riskPoints":["脱离官方平台交易","假平台冻结账户","要求保证金/解冻费","诱导继续充值"],"safeActions":["只走官方交易渠道","拒绝保证金和解冻费","保留聊天截图","向平台官方客服举报"]}' AS JSON),
+  1
+WHERE NOT EXISTS (SELECT 1 FROM challenge WHERE title = 'Agent模拟：游戏账号交易');
+
+INSERT INTO challenge
+  (title, description, level_order, difficulty, type, passing_score, score_reward, content, scripts, agent_config, status)
+SELECT
+  'Agent模拟：冒充公检法',
+  '骗子冒充执法人员，以涉案、保密、资金核查为由要求你配合转账。',
+  106, 5, 'agent_scenario', 75, 100,
+  NULL, NULL,
+  CAST('{"fraudType":"冒充公检法","scenarioBrief":"对方声称你涉嫌案件，要求保密并进行资金核查。","persona":"办案民警/检察机关工作人员","riskPoints":["涉案恐吓","要求绝对保密","发送假文书","要求转入安全账户"],"safeActions":["挂断并拨打110核实","拒绝安全账户转账","告知家人老师","保存证据报警"]}' AS JSON),
+  1
+WHERE NOT EXISTS (SELECT 1 FROM challenge WHERE title = 'Agent模拟：冒充公检法');
+
+INSERT INTO challenge
+  (title, description, level_order, difficulty, type, passing_score, score_reward, content, scripts, agent_config, status)
+SELECT
+  'Agent模拟：贷款保证金',
+  '骗子以快速放款、低息免审为诱饵，诱导你先缴保证金、解冻金。',
+  107, 4, 'agent_scenario', 75, 100,
+  NULL, NULL,
+  CAST('{"fraudType":"贷款保证金","scenarioBrief":"对方声称可快速放款，但放款前需要缴纳保证金、刷流水或解冻金。","persona":"贷款平台经理","riskPoints":["低息免审快速放款","放款前收费","刷流水验证还款能力","银行卡填错需解冻"],"safeActions":["拒绝放款前收费","通过正规金融机构申请","不提供验证码和银行卡密码","向银保监/公安渠道核验"]}' AS JSON),
+  1
+WHERE NOT EXISTS (SELECT 1 FROM challenge WHERE title = 'Agent模拟：贷款保证金');
+
+INSERT INTO challenge
+  (title, description, level_order, difficulty, type, passing_score, score_reward, content, scripts, agent_config, status)
+SELECT
+  'Agent模拟：虚假投资理财',
+  '骗子以高收益内幕项目诱导入金，测试你能否识别杀猪盘和假平台。',
+  108, 5, 'agent_scenario', 75, 100,
+  NULL, NULL,
+  CAST('{"fraudType":"虚假投资理财","scenarioBrief":"对方通过社交关系建立信任，推荐高收益投资平台并诱导持续入金。","persona":"投资导师/热心网友","riskPoints":["高收益保本承诺","诱导下载非官方App","小额盈利诱导加仓","提现受阻继续缴费"],"safeActions":["拒绝非正规投资平台","不相信保本高收益","核验金融牌照和官方渠道","发现异常立即停止入金并报警"]}' AS JSON),
+  1
+WHERE NOT EXISTS (SELECT 1 FROM challenge WHERE title = 'Agent模拟：虚假投资理财');
+

@@ -22,6 +22,10 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
                          HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
         log.error("未授权访问: {}", authException.getMessage());
+        if (response.isCommitted()) {
+            log.debug("响应已提交，跳过未授权响应写入: {}", request.getServletPath());
+            return;
+        }
 
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

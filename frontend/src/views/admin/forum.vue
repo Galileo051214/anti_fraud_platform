@@ -135,6 +135,19 @@
             <h2 class="post-card__title">{{ selectedPost.title }}</h2>
             <div class="post-card__content">{{ selectedPost.content }}</div>
 
+            <div v-if="selectedPostImages.length > 0" class="post-card__gallery">
+              <a
+                v-for="(imageUrl, imageIndex) in selectedPostImages"
+                :key="`${imageUrl}-${imageIndex}`"
+                :href="imageUrl"
+                target="_blank"
+                rel="noopener"
+                class="post-card__gallery-item"
+              >
+                <img :src="imageUrl" :alt="`${selectedPost.title} 图片 ${imageIndex + 1}`" />
+              </a>
+            </div>
+
             <footer class="post-card__footer">
               <span class="post-card__stat">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -290,6 +303,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getPostPage,
+  getPostDetail,
   deletePost,
   getPostComments,
   createComment,
@@ -316,6 +330,7 @@ const submitting = ref(false)
 const expandedReplies = ref<Set<number>>(new Set())
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
+const selectedPostImages = computed(() => (selectedPost.value?.imageUrls || []).filter(Boolean))
 
 const getTypeName = (type: string) => {
   const map: Record<string, string> = { experience: '经验', question: '问答', discussion: '讨论' }
@@ -382,9 +397,18 @@ const handleDelete = async (post: PostVO) => {
 }
 
 const openPostDetail = async (post: PostVO) => {
+  const postId = post.id
   selectedPost.value = post
   showDetailModal.value = true
   loadComments()
+  try {
+    const detail = await getPostDetail(postId)
+    if (selectedPost.value?.id === postId) {
+      selectedPost.value = detail
+    }
+  } catch {
+    ElMessage.error('加载帖子详情失败')
+  }
 }
 
 const closeDetailModal = () => {
@@ -927,6 +951,34 @@ onMounted(() => {
     line-height: 1.7;
     white-space: pre-wrap;
     margin-bottom: 16px;
+  }
+
+  &__gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  &__gallery-item {
+    aspect-ratio: 4 / 3;
+    display: block;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform var(--transition);
+    }
+
+    &:hover img {
+      transform: scale(1.03);
+    }
   }
 
   &__footer {

@@ -23,6 +23,11 @@ public class RecommendationVO {
     private String itemType;
 
     /**
+     * 推荐项子类型，例如 challenge 的 quiz/scenario/agent_scenario
+     */
+    private String itemSubtype;
+
+    /**
      * 标题
      */
     private String title;

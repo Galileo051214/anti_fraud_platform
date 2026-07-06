@@ -3,10 +3,11 @@ package com.anti.service.impl;
 import com.anti.common.BusinessException;
 import com.anti.entity.QAConversation;
 import com.anti.entity.vo.ChatVO;
+import com.anti.entity.vo.SourceVO;
 import com.anti.entity.vo.SessionVO;
 import com.anti.entity.vo.TokenStatsVO;
 import com.anti.mapper.QAConversationMapper;
-import com.anti.util.DeepSeekClient;
+import com.anti.service.AntiFraudAgentService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -34,7 +35,7 @@ class QAConversationServiceImplTest {
     @Mock
     private QAConversationMapper qaConversationMapper;
     @Mock
-    private DeepSeekClient deepSeekClient;
+    private AntiFraudAgentService antiFraudAgentService;
 
     @InjectMocks
     private QAConversationServiceImpl service;
@@ -53,8 +54,9 @@ class QAConversationServiceImplTest {
                 conversation("orphan", null)
         );
         when(qaConversationMapper.findByUserIdAndSessionId(1L, sessionId)).thenReturn(history);
-        when(deepSeekClient.chat(anyString(), eq("什么是刷单"), any())).thenReturn(successResponse("这是一段安全回答", 42));
-        when(deepSeekClient.getModel()).thenReturn("deepseek-chat");
+        when(antiFraudAgentService.answer(eq("什么是刷单"), any(), eq(AntiFraudAgentService.ANSWER_TYPE_AUTO)))
+                .thenReturn(agentAnswer("这是一段安全回答", 42, false));
+        when(antiFraudAgentService.getModelName()).thenReturn("deepseek-chat");
 
         ChatVO result = service.askQuestion("  什么是刷单  ", sessionId, 1L);
 
@@ -63,9 +65,12 @@ class QAConversationServiceImplTest {
         assertThat(result.getAnswer()).isEqualTo("这是一段安全回答");
         assertThat(result.getTokensUsed()).isEqualTo(42);
         assertThat(result.getFallback()).isFalse();
+        assertThat(result.getAnswerType()).isEqualTo("qa");
+        assertThat(result.getRiskLevel()).isEqualTo("low");
+        assertThat(result.getSources()).isEmpty();
 
         ArgumentCaptor<List<String[]>> historyCaptor = ArgumentCaptor.forClass(List.class);
-        verify(deepSeekClient).chat(anyString(), eq("什么是刷单"), historyCaptor.capture());
+        verify(antiFraudAgentService).answer(eq("什么是刷单"), historyCaptor.capture(), eq(AntiFraudAgentService.ANSWER_TYPE_AUTO));
         assertThat(historyCaptor.getValue())
                 .extracting(message -> message[0] + ":" + message[1])
                 .containsExactly(
@@ -85,6 +90,9 @@ class QAConversationServiceImplTest {
         assertThat(saved.getAnswer()).isEqualTo("这是一段安全回答");
         assertThat(saved.getModel()).isEqualTo("deepseek-chat");
         assertThat(saved.getTokensUsed()).isEqualTo(42);
+        assertThat(saved.getAnswerType()).isEqualTo("qa");
+        assertThat(saved.getRiskLevel()).isEqualTo("low");
+        assertThat(saved.getFallback()).isFalse();
     }
 
     @Test
@@ -94,20 +102,20 @@ class QAConversationServiceImplTest {
 
         assertThat(exception.getCode()).isEqualTo(403);
         assertThat(exception.getMessage()).contains("无权限访问该会话");
-        verifyNoInteractions(qaConversationMapper, deepSeekClient);
+        verifyNoInteractions(qaConversationMapper, antiFraudAgentService);
     }
 
     @Test
-    void askQuestionFallsBackWhenDeepSeekThrowsWithoutLeakingError() {
+    void askQuestionPersistsAgentFallbackWithoutLeakingError() {
         String sessionId = "session_1_1000";
         when(qaConversationMapper.findByUserIdAndSessionId(1L, sessionId)).thenReturn(List.of());
-        when(deepSeekClient.chat(anyString(), eq("测试问题"), any())).thenThrow(new RuntimeException("secret-api-error"));
-        when(deepSeekClient.getModel()).thenReturn("deepseek-chat");
+        when(antiFraudAgentService.answer(eq("测试问题"), any(), eq(AntiFraudAgentService.ANSWER_TYPE_AUTO)))
+                .thenReturn(agentAnswer("AI服务暂时不可用，请稍后再试。", 0, true));
+        when(antiFraudAgentService.getModelName()).thenReturn("deepseek-chat");
 
         ChatVO result = service.askQuestion("测试问题", sessionId, 1L);
 
         assertThat(result.getAnswer()).contains("AI服务暂时不可用");
-        assertThat(result.getAnswer()).doesNotContain("secret-api-error");
         assertThat(result.getTokensUsed()).isZero();
         assertThat(result.getFallback()).isTrue();
         verify(qaConversationMapper).insert(any(QAConversation.class));
@@ -118,29 +126,46 @@ class QAConversationServiceImplTest {
     void askQuestionTreatsNullHistoryAsEmpty() {
         String sessionId = "session_1_1000";
         when(qaConversationMapper.findByUserIdAndSessionId(1L, sessionId)).thenReturn(null);
-        when(deepSeekClient.chat(anyString(), eq("测试问题"), any())).thenReturn(successResponse("安全回答", 8));
-        when(deepSeekClient.getModel()).thenReturn("deepseek-chat");
+        when(antiFraudAgentService.answer(eq("测试问题"), any(), eq(AntiFraudAgentService.ANSWER_TYPE_AUTO)))
+                .thenReturn(agentAnswer("安全回答", 8, false));
+        when(antiFraudAgentService.getModelName()).thenReturn("deepseek-chat");
 
         ChatVO result = service.askQuestion("测试问题", sessionId, 1L);
 
         assertThat(result.getAnswer()).isEqualTo("安全回答");
         ArgumentCaptor<List<String[]>> historyCaptor = ArgumentCaptor.forClass(List.class);
-        verify(deepSeekClient).chat(anyString(), eq("测试问题"), historyCaptor.capture());
+        verify(antiFraudAgentService).answer(eq("测试问题"), historyCaptor.capture(), eq(AntiFraudAgentService.ANSWER_TYPE_AUTO));
         assertThat(historyCaptor.getValue()).isEmpty();
     }
 
     @Test
-    void askQuestionUsesClearFallbackWhenApiKeyMissing() {
+    void askQuestionPassesRequestedAnswerTypeToAgent() {
         String sessionId = "session_1_1000";
         when(qaConversationMapper.findByUserIdAndSessionId(1L, sessionId)).thenReturn(List.of());
-        when(deepSeekClient.chat(anyString(), eq("测试问题"), any())).thenReturn(failedResponse("AI_API_KEY_MISSING"));
-        when(deepSeekClient.getModel()).thenReturn("deepseek-chat");
+        AntiFraudAgentService.AgentAnswer answer = agentAnswer("最新汇报", 11, false);
+        answer.setAnswerType(AntiFraudAgentService.ANSWER_TYPE_LATEST_REPORT);
+        answer.setRiskLevel("medium");
+        SourceVO source = source("公安部通报", "https://www.mps.gov.cn/a.html", "mps.gov.cn");
+        answer.setSources(List.of(source));
+        answer.setRetrievedAt(LocalDateTime.of(2026, 7, 4, 10, 0));
+        when(antiFraudAgentService.answer(eq("测试问题"), any(), eq(AntiFraudAgentService.ANSWER_TYPE_LATEST_REPORT)))
+                .thenReturn(answer);
+        when(antiFraudAgentService.getModelName()).thenReturn("deepseek-chat");
 
-        ChatVO result = service.askQuestion("测试问题", sessionId, 1L);
+        ChatVO result = service.askQuestion("测试问题", sessionId, 1L, AntiFraudAgentService.ANSWER_TYPE_LATEST_REPORT);
 
-        assertThat(result.getAnswer()).contains("AI服务尚未配置");
-        assertThat(result.getFallback()).isTrue();
-        verify(qaConversationMapper).insert(any(QAConversation.class));
+        assertThat(result.getAnswerType()).isEqualTo(AntiFraudAgentService.ANSWER_TYPE_LATEST_REPORT);
+        assertThat(result.getRiskLevel()).isEqualTo("medium");
+        assertThat(result.getSources()).containsExactly(source);
+        assertThat(result.getRetrievedAt()).isEqualTo(LocalDateTime.of(2026, 7, 4, 10, 0));
+
+        ArgumentCaptor<QAConversation> conversationCaptor = ArgumentCaptor.forClass(QAConversation.class);
+        verify(qaConversationMapper).insert(conversationCaptor.capture());
+        QAConversation saved = conversationCaptor.getValue();
+        assertThat(saved.getAnswerType()).isEqualTo(AntiFraudAgentService.ANSWER_TYPE_LATEST_REPORT);
+        assertThat(saved.getRiskLevel()).isEqualTo("medium");
+        assertThat(saved.getSourcesJson()).contains("公安部通报");
+        assertThat(saved.getRetrievedAt()).isEqualTo(LocalDateTime.of(2026, 7, 4, 10, 0));
     }
 
     @Test
@@ -215,6 +240,29 @@ class QAConversationServiceImplTest {
     }
 
     @Test
+    void getConversationHistoryRestoresAgentMetadata() {
+        QAConversation conversation = conversation("最新诈骗汇报", "近期高发提醒");
+        conversation.setAnswerType(AntiFraudAgentService.ANSWER_TYPE_LATEST_REPORT);
+        conversation.setRiskLevel("medium");
+        conversation.setFallback(true);
+        conversation.setRetrievedAt(LocalDateTime.of(2026, 7, 4, 10, 30));
+        conversation.setSourcesJson("""
+                [{"title":"公安部通报","url":"https://www.mps.gov.cn/a.html","domain":"mps.gov.cn","snippet":"反诈提醒"}]
+                """);
+        when(qaConversationMapper.findByUserIdAndSessionId(1L, "session_1_1000")).thenReturn(List.of(conversation));
+
+        List<ChatVO> history = service.getConversationHistory("session_1_1000", 1L);
+
+        assertThat(history).hasSize(1);
+        ChatVO vo = history.get(0);
+        assertThat(vo.getAnswerType()).isEqualTo(AntiFraudAgentService.ANSWER_TYPE_LATEST_REPORT);
+        assertThat(vo.getRiskLevel()).isEqualTo("medium");
+        assertThat(vo.getFallback()).isTrue();
+        assertThat(vo.getRetrievedAt()).isEqualTo(LocalDateTime.of(2026, 7, 4, 10, 30));
+        assertThat(vo.getSources()).extracting(SourceVO::getDomain).containsExactly("mps.gov.cn");
+    }
+
+    @Test
     void submitFeedbackRejectsNullMapperResultAsMissingSession() {
         when(qaConversationMapper.selectList(any())).thenReturn(null);
 
@@ -246,18 +294,21 @@ class QAConversationServiceImplTest {
         return conversation;
     }
 
-    private DeepSeekClient.DeepSeekResponse successResponse(String content, int totalTokens) {
-        DeepSeekClient.DeepSeekResponse response = new DeepSeekClient.DeepSeekResponse();
-        response.setSuccess(true);
-        response.setContent(content);
-        response.setTotalTokens(totalTokens);
-        return response;
+    private AntiFraudAgentService.AgentAnswer agentAnswer(String content, int totalTokens, boolean fallback) {
+        AntiFraudAgentService.AgentAnswer answer = new AntiFraudAgentService.AgentAnswer();
+        answer.setAnswer(content);
+        answer.setTokensUsed(totalTokens);
+        answer.setFallback(fallback);
+        answer.setAnswerType(AntiFraudAgentService.ANSWER_TYPE_QA);
+        answer.setRiskLevel("low");
+        return answer;
     }
 
-    private DeepSeekClient.DeepSeekResponse failedResponse(String errorMessage) {
-        DeepSeekClient.DeepSeekResponse response = new DeepSeekClient.DeepSeekResponse();
-        response.setSuccess(false);
-        response.setErrorMessage(errorMessage);
-        return response;
+    private SourceVO source(String title, String url, String domain) {
+        SourceVO source = new SourceVO();
+        source.setTitle(title);
+        source.setUrl(url);
+        source.setDomain(domain);
+        return source;
     }
 }

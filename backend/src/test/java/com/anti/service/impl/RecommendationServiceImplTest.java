@@ -7,6 +7,7 @@ import com.anti.entity.News;
 import com.anti.entity.RecommendationLog;
 import com.anti.entity.UserBehaviorMatrix;
 import com.anti.entity.UserProfile;
+import com.anti.entity.vo.RecommendationVO;
 import com.anti.entity.vo.UserInterestVO;
 import com.anti.mapper.AssociationRuleMapper;
 import com.anti.mapper.CaseBrowseLogMapper;
@@ -34,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -124,6 +126,18 @@ class RecommendationServiceImplTest {
     }
 
     @Test
+    void getRecommendationsReturnsCachedResultWithoutRecomputingOrLoggingExposure() {
+        RecommendationVO cached = recommendation("case", 10L);
+        when(redisCacheUtil.get("cache:recommend:1:type:case:limit:3")).thenReturn(List.of(cached));
+
+        List<RecommendationVO> result = service.getRecommendations(1L, 3, "case");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getItemId()).isEqualTo(10L);
+        verifyNoInteractions(userProfileMapper, newsMapper, fraudCaseMapper, challengeMapper, recommendationLogMapper);
+    }
+
+    @Test
     void recommendationExposureWriteFailureDoesNotBreakColdStartRecommendations() {
         when(userProfileMapper.selectByUserId(1L)).thenReturn(null);
         when(newsMapper.selectRequiredNews(1)).thenReturn(List.of(mandatoryNews()));
@@ -200,6 +214,24 @@ class RecommendationServiceImplTest {
     }
 
     @Test
+    void getUserInterestAnalysisReturnsCachedResultWithoutClearingCache() {
+        UserInterestVO cached = new UserInterestVO();
+        cached.setLifecycleStage("newbie");
+        cached.setLifecycleStageName("新手期");
+        cached.setKnowledgeLevel(30);
+        cached.setWeakPoints(List.of());
+        cached.setInterestTags(List.of());
+        when(redisCacheUtil.get("cache:user_interest:1")).thenReturn(cached);
+
+        UserInterestVO result = service.getUserInterestAnalysis(1L);
+
+        assertThat(result.getLifecycleStage()).isEqualTo("newbie");
+        assertThat(result.getKnowledgeLevel()).isEqualTo(30);
+        verify(redisCacheUtil, never()).delete(anyString());
+        verifyNoInteractions(userProfileMapper, profileService, behaviorMatrixMapper);
+    }
+
+    @Test
     void recordRecommendationClickRejectsDisabledNewsBeforeLogging() {
         News draft = mandatoryNews();
         draft.setStatus(0);
@@ -247,5 +279,13 @@ class RecommendationServiceImplTest {
         challenge.setScoreReward(20);
         challenge.setLevelOrder(1);
         return challenge;
+    }
+
+    private RecommendationVO recommendation(String itemType, Long itemId) {
+        RecommendationVO vo = new RecommendationVO();
+        vo.setItemType(itemType);
+        vo.setItemId(itemId);
+        vo.setTitle("缓存推荐");
+        return vo;
     }
 }

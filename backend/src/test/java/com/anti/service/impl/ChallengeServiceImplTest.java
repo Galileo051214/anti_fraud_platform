@@ -16,6 +16,7 @@ import com.anti.service.ScoreService;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -67,6 +68,56 @@ class ChallengeServiceImplTest {
     }
 
     @Test
+    void agentScenarioIsAlwaysUnlockedAndDoesNotAdvanceNormalUnlock() {
+        Challenge first = quizChallenge();
+        first.setId(10L);
+        first.setLevelOrder(1);
+        Challenge third = quizChallenge();
+        third.setId(30L);
+        third.setTitle("第三关");
+        third.setLevelOrder(3);
+        Challenge agent = agentChallenge();
+        agent.setId(99L);
+        agent.setLevelOrder(100);
+        when(challengeMapper.selectEnabledChallenges()).thenReturn(List.of(first, third, agent));
+        when(recordMapper.selectPassedChallengeIds(1L)).thenReturn(List.of(99L));
+        when(recordMapper.selectHighestScore(1L, 99L)).thenReturn(95);
+        when(challengeMapper.selectMaxPassedNonAgentLevel(1L)).thenReturn(0);
+
+        List<ChallengeVO> result = service.getChallengeList(1L);
+
+        ChallengeVO firstVo = result.stream().filter(c -> c.getId().equals(10L)).findFirst().orElseThrow();
+        ChallengeVO thirdVo = result.stream().filter(c -> c.getId().equals(30L)).findFirst().orElseThrow();
+        ChallengeVO agentVo = result.stream().filter(c -> c.getId().equals(99L)).findFirst().orElseThrow();
+        assertThat(firstVo.getLocked()).isFalse();
+        assertThat(thirdVo.getLocked()).isTrue();
+        assertThat(agentVo.getLocked()).isFalse();
+        assertThat(agentVo.getPassed()).isTrue();
+        assertThat(agentVo.getHighestScore()).isEqualTo(95);
+    }
+
+    @Test
+    void createAgentScenarioForcesFixedPassingScoreAndReward() {
+        com.anti.entity.dto.CreateChallengeRequest request = new com.anti.entity.dto.CreateChallengeRequest();
+        request.setTitle("Agent测试");
+        request.setDescription("测试");
+        request.setLevelOrder(100);
+        request.setDifficulty(3);
+        request.setType("agent_scenario");
+        request.setPassingScore(1);
+        request.setScoreReward(1);
+        request.setAgentConfig(agentConfig());
+
+        service.createChallenge(request);
+
+        ArgumentCaptor<Challenge> captor = ArgumentCaptor.forClass(Challenge.class);
+        verify(challengeMapper).insert(captor.capture());
+        assertThat(captor.getValue().getPassingScore()).isEqualTo(75);
+        assertThat(captor.getValue().getScoreReward()).isEqualTo(100);
+        assertThat(captor.getValue().getAgentConfig().getFraudType()).isEqualTo("刷单返利");
+    }
+
+    @Test
     void submitChallengeAwardsScoreOnlyOnFirstPass() {
         Challenge challenge = quizChallenge();
         UserProfile profile = new UserProfile();
@@ -100,7 +151,7 @@ class ChallengeServiceImplTest {
         when(challengeMapper.selectById(10L)).thenReturn(challenge);
         when(recordMapper.selectLatestByUserAndChallenge(1L, 10L)).thenReturn(latest);
         when(recordMapper.selectPassedChallengeIds(1L)).thenReturn(List.of(10L));
-        when(challengeMapper.selectBatchIds(List.of(10L))).thenReturn(List.of(challenge));
+        when(challengeMapper.selectMaxPassedNonAgentLevel(1L)).thenReturn(1);
         when(recordMapper.selectHighestScore(1L, 10L)).thenReturn(100);
 
         ChallengeResultVO result = service.submitChallenge(correctSubmitRequest(), 1L);
@@ -229,5 +280,29 @@ class ChallengeServiceImplTest {
         content.setQuestions(List.of(question));
         challenge.setContent(content);
         return challenge;
+    }
+
+    private Challenge agentChallenge() {
+        Challenge challenge = new Challenge();
+        challenge.setId(99L);
+        challenge.setTitle("Agent模拟");
+        challenge.setType("agent_scenario");
+        challenge.setLevelOrder(100);
+        challenge.setDifficulty(3);
+        challenge.setPassingScore(75);
+        challenge.setScoreReward(100);
+        challenge.setStatus(1);
+        challenge.setAgentConfig(agentConfig());
+        return challenge;
+    }
+
+    private Challenge.AgentConfig agentConfig() {
+        Challenge.AgentConfig config = new Challenge.AgentConfig();
+        config.setFraudType("刷单返利");
+        config.setScenarioBrief("诱导垫资刷单");
+        config.setPersona("任务导师");
+        config.setRiskPoints(List.of("要求垫资", "高额返利"));
+        config.setSafeActions(List.of("拒绝转账", "报警求助"));
+        return config;
     }
 }

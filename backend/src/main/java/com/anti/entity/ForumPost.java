@@ -46,6 +46,12 @@ public class ForumPost implements Serializable {
     private List<Long> tagIds;
 
     /**
+     * 帖子图片URL数组
+     */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private List<String> imageUrls;
+
+    /**
      * 浏览量
      */
     private Integer viewCount;

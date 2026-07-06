@@ -26,6 +26,8 @@ public class PostVO {
 
     private List<Long> tagIds;
 
+    private List<String> imageUrls;
+
     private Integer viewCount;
 
     private Integer likeCount;

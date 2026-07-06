@@ -53,6 +53,32 @@ public class QAConversation implements Serializable {
     private Integer feedback;
 
     /**
+     * 回答类型：qa / latest_report
+     */
+    private String answerType;
+
+    /**
+     * 风险等级：low / medium / high
+     */
+    private String riskLevel;
+
+    /**
+     * 检索来源JSON
+     */
+    private String sourcesJson;
+
+    /**
+     * 是否降级回答
+     */
+    private Boolean fallback;
+
+    /**
+     * 检索时间
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime retrievedAt;
+
+    /**
      * 创建时间
      */
     @TableField(fill = FieldFill.INSERT)

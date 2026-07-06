@@ -55,6 +55,12 @@ public class RecommendationServiceImpl implements RecommendationService {
         validateUserId(userId);
         int safeLimit = normalizeLimit(limit);
         String type = itemType != null && !itemType.trim().isEmpty() ? normalizeItemType(itemType) : "";
+
+        List<RecommendationVO> cachedRecommendations = getCachedRecommendations(userId, safeLimit, type);
+        if (cachedRecommendations != null) {
+            return cachedRecommendations;
+        }
+
         UserProfile profile = userProfileMapper.selectByUserId(userId);
         if (profile == null) {
             profile = initUserProfile(userId);
@@ -74,6 +80,7 @@ public class RecommendationServiceImpl implements RecommendationService {
                 default -> computeNewbieRecommendations(userId, safeLimit, profile);
             };
         }
+        cacheRecommendations(userId, safeLimit, type, recommendations);
         recordRecommendationExposures(userId, recommendations, lifecycleStage);
         return recommendations;
     }
@@ -81,6 +88,42 @@ public class RecommendationServiceImpl implements RecommendationService {
     /**
      * 按内容类型返回推荐：案例 / 资讯 / 闯关，策略仍随生命周期变化（需求文档：新手期规则+热度、成长期内容+SPM、成熟期协同过滤）
      */
+    private List<RecommendationVO> getCachedRecommendations(Long userId, int limit, String itemType) {
+        String cacheKey = CacheConstants.getRecommendKey(userId, limit, itemType);
+        try {
+            Object cached = redisCacheUtil.get(cacheKey);
+            if (cached == null) {
+                return null;
+            }
+            return objectMapper.convertValue(cached, new TypeReference<List<RecommendationVO>>() {});
+        } catch (Exception e) {
+            log.debug("读取推荐缓存失败 userId={} limit={} itemType={}", userId, limit, itemType, e);
+            return null;
+        }
+    }
+
+    private void cacheRecommendations(Long userId, int limit, String itemType, List<RecommendationVO> recommendations) {
+        String cacheKey = CacheConstants.getRecommendKey(userId, limit, itemType);
+        try {
+            redisCacheUtil.set(cacheKey, recommendations, CacheConstants.RECOMMEND_CACHE_TTL, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.debug("写入推荐缓存失败 userId={} limit={} itemType={}", userId, limit, itemType, e);
+        }
+    }
+
+    private UserInterestVO getCachedUserInterest(String cacheKey) {
+        try {
+            Object cached = redisCacheUtil.get(cacheKey);
+            if (cached == null) {
+                return null;
+            }
+            return objectMapper.convertValue(cached, UserInterestVO.class);
+        } catch (Exception e) {
+            log.debug("读取用户兴趣缓存失败 key={}", cacheKey, e);
+            return null;
+        }
+    }
+
     private List<RecommendationVO> getTypedRecommendations(Long userId, int limit, String itemType,
                                                          String lifecycleStage, UserProfile profile) {
         return switch (itemType) {
@@ -456,20 +499,19 @@ public class RecommendationServiceImpl implements RecommendationService {
     @Override
     public UserInterestVO getUserInterestAnalysis(Long userId) {
         validateUserId(userId);
-        log.info("=== getUserInterestAnalysis 开始: userId={} ===", userId);
         String cacheKey = CacheConstants.getUserInterestKey(userId);
-        
-        redisCacheUtil.delete(cacheKey);
-        log.info("=== 已清除缓存，强制重新计算 ===");
+
+        UserInterestVO cached = getCachedUserInterest(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
         
         UserProfile profile = userProfileMapper.selectByUserId(userId);
         if (profile == null) {
             profile = initUserProfile(userId);
         }
         
-        log.info("=== 调用 determineLifecycleStage ===");
         String lifecycleStage = profileService.determineLifecycleStage(userId);
-        log.info("=== determineLifecycleStage 返回: {} ===", lifecycleStage);
         if (!lifecycleStage.equals(profile.getLifecycleStage())) {
             profile.setLifecycleStage(lifecycleStage);
             userProfileMapper.updateById(profile);
@@ -1208,13 +1250,18 @@ public class RecommendationServiceImpl implements RecommendationService {
         RecommendationVO vo = new RecommendationVO();
         vo.setItemId(c.getId());
         vo.setItemType("challenge");
+        vo.setItemSubtype(c.getType());
         vo.setTitle(c.getTitle());
         vo.setSummary(c.getDescription());
         vo.setScore(BigDecimal.valueOf(c.getScoreReward() != null ? c.getScoreReward() : 0));
         vo.setReasons(List.of(reason));
         List<String> tags = new ArrayList<>();
         if (c.getType() != null) {
-            tags.add("scenario".equalsIgnoreCase(c.getType()) ? "情景模拟" : "知识闯关");
+            tags.add(switch (c.getType()) {
+                case "scenario" -> "情景模拟";
+                case "agent_scenario" -> "Agent模拟";
+                default -> "知识闯关";
+            });
         }
         if (c.getDifficulty() != null) {
             tags.add("难度" + c.getDifficulty());

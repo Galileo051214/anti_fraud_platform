@@ -43,7 +43,7 @@
           <span class="chat-icon"><IconBot :size="36" /></span>
           <div class="chat-info">
             <h3>智能反诈助手</h3>
-            <p>{{ isLoading ? '思考中...' : '随时为您解答各类诈骗问题' }}</p>
+            <p>{{ isLoading ? '思考中...' : '按问题需要自动检索最新反诈信息' }}</p>
           </div>
           <div class="header-actions">
             <el-button :icon="Refresh" text @click="clearConversation">
@@ -53,7 +53,7 @@
         </div>
 
         <!-- 消息列表 -->
-        <div class="chat-messages" ref="messagesRef">
+        <div class="chat-messages" ref="messagesRef" @scroll="handleMessagesScroll">
           <div v-if="messages.length === 0" class="welcome-tip">
             <div class="welcome-icon"><IconBot :size="64" /></div>
             <h3>您好，我是反诈智能助手</h3>
@@ -85,15 +85,64 @@
                 v-if="msg.role === 'user'"
                 class="message-bubble message-bubble--plain"
               >{{ msg.content }}</div>
+              <template v-else>
+                <div
+                  v-if="msg.reasoning"
+                  class="reasoning-panel"
+                >
+                  <div class="reasoning-panel__title">分析思路</div>
+                  <div class="reasoning-panel__body" v-html="formatContent(msg.reasoning)"></div>
+                </div>
+                <div
+                  class="message-bubble"
+                  v-html="formatContent(msg.content || (msg.streaming ? '正在生成...' : ''))"
+                ></div>
+              </template>
+              <div v-if="shouldShowMeta(msg)" class="message-meta">
+                <span
+                  v-if="msg.riskLevel"
+                  class="meta-tag"
+                  :class="`meta-tag--risk-${getRiskClass(msg.riskLevel)}`"
+                >
+                  {{ getRiskLabel(msg.riskLevel) }}
+                </span>
+                <span v-if="msg.retrievedAt" class="meta-tag meta-tag--time">
+                  检索 {{ formatDateTime(msg.retrievedAt) }}
+                </span>
+                <span v-if="msg.searchProvider" class="meta-tag meta-tag--provider">
+                  {{ msg.searchProvider }}
+                </span>
+                <span
+                  v-if="msg.fallback !== undefined"
+                  class="meta-tag"
+                  :class="msg.fallback ? 'meta-tag--fallback' : 'meta-tag--normal'"
+                >
+                  {{ msg.fallback ? '降级回答' : '服务正常' }}
+                </span>
+                <span v-if="msg.fallbackReason" class="meta-tag meta-tag--reason">
+                  {{ msg.fallbackReason }}
+                </span>
+              </div>
               <div
-                v-else
-                class="message-bubble"
-                v-html="formatContent(msg.content)"
-              ></div>
+                v-if="msg.role === 'assistant' && msg.sources?.length"
+                class="source-links"
+              >
+                <span class="source-links__label">来源：</span>
+                <template v-for="(source, sourceIndex) in msg.sources" :key="sourceIndex">
+                  <a
+                    v-if="getSafeSourceUrl(source.url)"
+                    class="source-links__item"
+                    :href="getSafeSourceUrl(source.url)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {{ getSourceUrlLabel(source, sourceIndex) }}
+                  </a>
+                </template>
+              </div>
               <div class="message-footer">
                 <span class="message-time">{{ msg.time }}</span>
                 <template v-if="msg.role === 'assistant'">
-                  <span v-if="msg.fallback" class="fallback-status">服务降级</span>
                   <el-button
                     v-if="msg.feedback === undefined"
                     :icon="CircleCheck"
@@ -121,7 +170,7 @@
             </div>
           </div>
 
-          <div v-if="isLoading" class="message assistant loading">
+          <div v-if="isLoading && !hasStreamingAssistant" class="message assistant loading">
             <div class="message-avatar"><IconBot /></div>
             <div class="message-content">
               <div class="message-bubble message-bubble--loading">
@@ -143,14 +192,14 @@
               maxlength="2000"
               show-word-limit
               resize="none"
-              placeholder="请输入您的问题..."
+              placeholder="请输入你的反诈问题..."
               :disabled="isLoading"
               @keydown.enter.ctrl="handleSend"
             />
             <el-button
               type="primary"
               :icon="Promotion"
-              :disabled="!inputText.trim() || isLoading"
+              :disabled="!canSend"
               @click="handleSend"
             >
               发送
@@ -164,19 +213,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, computed } from 'vue'
 import { Plus, Delete, Menu, Refresh, Promotion, CircleCheck, CircleClose } from '@element-plus/icons-vue'
 import { IconBot, IconUser, IconThumbUp, IconThumbDown } from '@/components/icons'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  askQuestion,
+  askQuestionStream,
   getConversationHistory,
   getSessionList,
   submitFeedback,
   deleteSession as deleteSessionApi,
   createNewSession
 } from '@/api/chat'
-import type { ChatMessage, SessionVO } from '@/api/chat'
+import type { ChatMessage, ChatVO, SessionVO, SourceVO } from '@/api/chat'
 
 const inputText = ref('')
 const messagesRef = ref<HTMLElement>()
@@ -185,17 +234,28 @@ const sessionList = ref<SessionVO[]>([])
 const sessionId = ref<string | null>(null)
 const isLoading = ref(false)
 const sidebarCollapsed = ref(false)
+const shouldAutoScroll = ref(true)
 
 const quickQuestions = [
   '什么是刷单诈骗？',
-  '遇到冒充客服怎么办？',
+  '近期高发诈骗有哪些？',
   '如何识别杀猪盘？',
   '被骗后如何处理？'
 ]
 
+const canSend = computed(() => !isLoading.value && inputText.value.trim().length > 0)
+const hasStreamingAssistant = computed(() => messages.value.some(message => message.role === 'assistant' && message.streaming))
+
+const parseDate = (time?: string) => {
+  if (!time) return null
+  const date = new Date(time.replace(' ', 'T'))
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
 const formatTime = (time: string) => {
   if (!time) return ''
-  const date = new Date(time)
+  const date = parseDate(time)
+  if (!date) return time
   const now = new Date()
   const diff = now.getTime() - date.getTime()
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
@@ -203,6 +263,98 @@ const formatTime = (time: string) => {
   if (days === 1) return '昨天'
   if (days < 7) return `${days}天前`
   return date.toLocaleDateString()
+}
+
+const formatClock = (time?: string) => {
+  const date = parseDate(time)
+  return date ? date.toLocaleTimeString() : ''
+}
+
+const formatDateTime = (time?: string) => {
+  const date = parseDate(time)
+  return date ? date.toLocaleString() : (time || '')
+}
+
+const normalizeFeedback = (feedback?: number): 1 | -1 | undefined => {
+  return feedback === 1 || feedback === -1 ? feedback : undefined
+}
+
+const normalizeSources = (sources?: SourceVO[]) => {
+  if (!Array.isArray(sources)) return []
+  return sources.filter(source => {
+    return Boolean(source?.title || source?.domain || source?.snippet || source?.url)
+  })
+}
+
+const buildChatRequest = (question: string) => {
+  return {
+    question,
+    sessionId: sessionId.value || undefined,
+    answerType: 'auto' as const
+  }
+}
+
+const toAssistantMessage = (item: ChatVO): ChatMessage => ({
+  role: 'assistant',
+  content: item.answer.trim(),
+  reasoning: item.reasoning?.trim() || undefined,
+  time: formatClock(item.createTime) || new Date().toLocaleTimeString(),
+  sources: normalizeSources(item.sources),
+  retrievedAt: item.retrievedAt,
+  searchProvider: item.searchProvider,
+  riskLevel: item.riskLevel,
+  fallback: item.fallback === undefined ? undefined : Boolean(item.fallback),
+  fallbackReason: item.fallbackReason,
+  streaming: false,
+  feedback: normalizeFeedback(item.feedback)
+})
+
+const getRiskClass = (riskLevel?: string) => {
+  if (riskLevel === 'low' || riskLevel === 'medium' || riskLevel === 'high') {
+    return riskLevel
+  }
+  return 'unknown'
+}
+
+const getRiskLabel = (riskLevel?: string) => {
+  const labels: Record<string, string> = {
+    low: '低风险',
+    medium: '中风险',
+    high: '高风险'
+  }
+  return labels[riskLevel || ''] || (riskLevel ? `风险：${riskLevel}` : '风险未知')
+}
+
+const shouldShowMeta = (msg: ChatMessage) => {
+  return msg.role === 'assistant'
+    && Boolean(
+      msg.riskLevel
+      || msg.retrievedAt
+      || msg.searchProvider
+      || msg.sources?.length
+      || msg.fallback !== undefined
+      || msg.fallbackReason
+    )
+}
+
+const getSafeSourceUrl = (url?: string) => {
+  if (!url) return ''
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : ''
+  } catch {
+    return ''
+  }
+}
+
+const getSourceTitle = (source: SourceVO) => {
+  return source.title?.trim() || source.domain?.trim() || '未命名来源'
+}
+
+const getSourceUrlLabel = (source: SourceVO, index: number) => {
+  const url = getSafeSourceUrl(source.url)
+  const title = getSourceTitle(source)
+  return url ? `[${index + 1}] ${title}：${url}` : `[${index + 1}] ${title}`
 }
 
 const getErrorMessage = (error: unknown, fallback: string) => {
@@ -233,10 +385,23 @@ const formatContent = (content: string) => {
     .replace(/`(.*?)`/g, '<code>$1</code>')
 }
 
-const scrollToBottom = () => {
+const isNearBottom = () => {
+  const el = messagesRef.value
+  if (!el) return true
+  return el.scrollHeight - el.scrollTop - el.clientHeight < 80
+}
+
+const handleMessagesScroll = () => {
+  shouldAutoScroll.value = isNearBottom()
+}
+
+const scrollToBottom = (force = false) => {
   nextTick(() => {
-    if (messagesRef.value) {
-      messagesRef.value.scrollTop = messagesRef.value.scrollHeight
+    const el = messagesRef.value
+    if (!el) return
+    if (force || shouldAutoScroll.value) {
+      el.scrollTop = el.scrollHeight
+      shouldAutoScroll.value = true
     }
   })
 }
@@ -258,9 +423,7 @@ const switchSession = async (sid: string) => {
     const history = res || []
     const restored: ChatMessage[] = []
     for (const item of history) {
-      const t = item.createTime
-        ? new Date(item.createTime).toLocaleTimeString()
-        : ''
+      const t = formatClock(item.createTime)
       if (item.question?.trim()) {
         restored.push({
           role: 'user',
@@ -269,17 +432,11 @@ const switchSession = async (sid: string) => {
         })
       }
       if (item.answer?.trim()) {
-        restored.push({
-          role: 'assistant',
-          content: item.answer.trim(),
-          time: t,
-          fallback: Boolean(item.fallback),
-          feedback: undefined
-        })
+        restored.push(toAssistantMessage(item))
       }
     }
     messages.value = restored
-    scrollToBottom()
+    scrollToBottom(true)
   } catch (error) {
     console.error('加载会话历史失败', error)
     ElMessage.error(getErrorMessage(error, '加载会话历史失败'))
@@ -319,7 +476,7 @@ const handleDeleteSession = async (sid: string) => {
 }
 
 const sendMessage = async () => {
-  if (!inputText.value.trim() || isLoading.value) return
+  if (!canSend.value) return
 
   const question = inputText.value.trim()
   const userMessage: ChatMessage = {
@@ -329,35 +486,92 @@ const sendMessage = async () => {
   }
   messages.value.push(userMessage)
   inputText.value = ''
-  scrollToBottom()
+  scrollToBottom(true)
+
+  const assistantIndex = messages.value.length
+  messages.value.push({
+    role: 'assistant',
+    content: '',
+    reasoning: '',
+    time: new Date().toLocaleTimeString(),
+    sources: [],
+    streaming: true
+  })
+  scrollToBottom(true)
 
   isLoading.value = true
 
+  const patchAssistantMessage = (patch: Partial<ChatMessage>) => {
+    const current = messages.value[assistantIndex]
+    if (!current || current.role !== 'assistant') return
+    messages.value[assistantIndex] = {
+      ...current,
+      ...patch
+    }
+  }
+
+  const getAssistantMessage = () => messages.value[assistantIndex]
+
   try {
-    const res = await askQuestion({
-      question,
-      sessionId: sessionId.value || undefined
+    const requestPayload = buildChatRequest(question)
+    const data = await askQuestionStream(requestPayload, {
+      onMeta: (meta) => {
+        if (meta.sessionId && sessionId.value !== meta.sessionId) {
+          sessionId.value = meta.sessionId
+        }
+        patchAssistantMessage({
+          sources: normalizeSources(meta.sources),
+          retrievedAt: meta.retrievedAt,
+          searchProvider: meta.searchProvider,
+          riskLevel: meta.riskLevel,
+          fallback: meta.fallback === undefined ? undefined : Boolean(meta.fallback),
+          fallbackReason: meta.fallbackReason
+        })
+        scrollToBottom()
+      },
+      onReasoning: (delta) => {
+        if (!delta) return
+        const current = getAssistantMessage()
+        patchAssistantMessage({
+          reasoning: `${current?.reasoning || ''}${delta}`
+        })
+        scrollToBottom()
+      },
+      onDelta: (delta) => {
+        if (!delta) return
+        const current = getAssistantMessage()
+        patchAssistantMessage({
+          content: `${current?.content || ''}${delta}`
+        })
+        scrollToBottom()
+      },
+      onDone: (doneData) => {
+        const current = getAssistantMessage()
+        patchAssistantMessage({
+          content: doneData.answer?.trim() || current?.content || '',
+          reasoning: current?.reasoning?.trim() || doneData.reasoning?.trim() || undefined,
+          sources: normalizeSources(doneData.sources),
+          retrievedAt: doneData.retrievedAt,
+          searchProvider: doneData.searchProvider,
+          riskLevel: doneData.riskLevel,
+          fallback: doneData.fallback === undefined ? undefined : Boolean(doneData.fallback),
+          fallbackReason: doneData.fallbackReason,
+          time: formatClock(doneData.createTime) || current?.time,
+          streaming: false
+        })
+      }
     })
-    const data = res
 
     if (sessionId.value !== data.sessionId) {
       sessionId.value = data.sessionId
-      await loadSessionList()
     }
-
-    const assistantMessage: ChatMessage = {
-      role: 'assistant',
-      content: data.answer,
-      time: new Date(data.createTime).toLocaleTimeString(),
-      fallback: Boolean(data.fallback),
-      feedback: undefined
-    }
-    messages.value.push(assistantMessage)
+    await loadSessionList()
     scrollToBottom()
   } catch (error) {
     ElMessage.error(getErrorMessage(error, '发送失败，请重试'))
-    messages.value.pop()
+    messages.value.splice(Math.max(0, messages.value.length - 2), 2)
   } finally {
+    patchAssistantMessage({ streaming: false })
     isLoading.value = false
   }
 }
@@ -373,12 +587,14 @@ const sendQuickQuestion = (question: string) => {
 
 const handleFeedback = async (index: number, feedback: 1 | -1) => {
   if (!sessionId.value) return
+  const targetMessage = messages.value[index]
+  if (!targetMessage || targetMessage.role !== 'assistant') return
   try {
     await submitFeedback({
       sessionId: sessionId.value,
       feedback
     })
-    messages.value[index].feedback = feedback
+    targetMessage.feedback = feedback
     ElMessage.success(feedback === 1 ? '感谢您的反馈' : '感谢您的反馈，我们会改进')
   } catch (error) {
     ElMessage.error(getErrorMessage(error, '提交反馈失败'))
@@ -558,6 +774,7 @@ onMounted(() => {
       gap: var(--spacing-sm);
     }
   }
+
 }
 
 .chat-messages {
@@ -732,6 +949,28 @@ onMounted(() => {
       max-width: 70%;
       gap: 4px;
 
+      .reasoning-panel {
+        padding: 10px 12px;
+        border: 1px solid hsl(220, 14%, 86%);
+        border-radius: var(--radius-sm);
+        background: hsl(220, 18%, 98%);
+        color: var(--text-secondary);
+        font-size: 12px;
+        line-height: 1.6;
+        box-shadow: var(--shadow-sm);
+
+        .reasoning-panel__title {
+          margin-bottom: 4px;
+          color: var(--text-primary);
+          font-size: 12px;
+          font-weight: 600;
+        }
+
+        .reasoning-panel__body {
+          overflow-wrap: anywhere;
+        }
+      }
+
       .message-bubble {
         position: relative;
         padding: var(--spacing-md);
@@ -779,6 +1018,107 @@ onMounted(() => {
         }
       }
 
+      .message-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        max-width: 100%;
+
+        .meta-tag {
+          display: inline-flex;
+          align-items: center;
+          min-height: 22px;
+          padding: 2px 8px;
+          border: 1px solid hsl(220, 14%, 86%);
+          border-radius: var(--radius-sm);
+          background: #fff;
+          color: var(--text-secondary);
+          font-size: 11px;
+          line-height: 1.2;
+        }
+
+        .meta-tag--type {
+          border-color: hsl(160, 44%, 78%);
+          background: hsl(160, 58%, 96%);
+          color: hsl(160, 60%, 30%);
+        }
+
+        .meta-tag--time {
+          background: hsl(220, 18%, 96%);
+        }
+
+        .meta-tag--provider {
+          border-color: hsl(205, 64%, 78%);
+          background: hsl(205, 70%, 96%);
+          color: hsl(205, 64%, 34%);
+        }
+
+        .meta-tag--normal {
+          border-color: hsl(160, 44%, 78%);
+          background: hsl(160, 58%, 96%);
+          color: hsl(160, 60%, 30%);
+        }
+
+        .meta-tag--fallback {
+          border-color: hsl(38, 72%, 70%);
+          background: hsl(38, 90%, 96%);
+          color: hsl(32, 70%, 38%);
+        }
+
+        .meta-tag--reason {
+          background: hsl(220, 18%, 96%);
+          font-family: monospace;
+        }
+
+        .meta-tag--risk-low {
+          border-color: hsl(160, 44%, 78%);
+          background: hsl(160, 58%, 96%);
+          color: hsl(160, 60%, 30%);
+        }
+
+        .meta-tag--risk-medium {
+          border-color: hsl(38, 72%, 70%);
+          background: hsl(38, 90%, 96%);
+          color: hsl(32, 70%, 38%);
+        }
+
+        .meta-tag--risk-high {
+          border-color: hsl(0, 72%, 78%);
+          background: hsl(0, 88%, 97%);
+          color: hsl(0, 68%, 42%);
+        }
+
+        .meta-tag--risk-unknown {
+          background: hsl(220, 18%, 96%);
+        }
+      }
+
+      .source-links {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        max-width: 100%;
+        padding: 8px 0;
+        color: var(--text-secondary);
+        font-size: 12px;
+        line-height: 1.5;
+
+        .source-links__label {
+          color: var(--text-primary);
+          font-weight: 600;
+        }
+
+        .source-links__item {
+          color: var(--primary);
+          overflow-wrap: anywhere;
+          text-decoration: none;
+
+          &:hover {
+            text-decoration: underline;
+          }
+        }
+      }
+
       .message-footer {
         display: flex;
         align-items: center;
@@ -787,16 +1127,6 @@ onMounted(() => {
         .message-time {
           font-size: 11px;
           color: var(--text-secondary);
-        }
-
-        .fallback-status {
-          padding: 2px 6px;
-          border: 1px solid hsl(38, 72%, 70%);
-          border-radius: var(--radius-sm);
-          background: hsl(38, 90%, 96%);
-          color: hsl(32, 70%, 38%);
-          font-size: 11px;
-          line-height: 1.2;
         }
 
         :deep(.el-button) {
@@ -915,6 +1245,7 @@ onMounted(() => {
         display: block;
       }
     }
+
   }
 
   .chat-messages .message .message-content {

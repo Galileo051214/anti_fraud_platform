@@ -29,6 +29,11 @@ public class ChatVO implements Serializable {
     private String answer;
 
     /**
+     * 模型返回的可展示分析内容
+     */
+    private String reasoning;
+
+    /**
      * 消耗token数
      */
     private Integer tokensUsed;
@@ -37,6 +42,37 @@ public class ChatVO implements Serializable {
      * 是否为AI服务不可用时的本地降级回答
      */
     private Boolean fallback;
+
+    /**
+     * 降级原因
+     */
+    private String fallbackReason;
+
+    /**
+     * 回答类型：qa / latest_report
+     */
+    private String answerType;
+
+    /**
+     * 实际使用的检索 provider
+     */
+    private String searchProvider;
+
+    /**
+     * 风险等级：low / medium / high
+     */
+    private String riskLevel;
+
+    /**
+     * 检索来源
+     */
+    private List<SourceVO> sources;
+
+    /**
+     * 检索时间
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime retrievedAt;
 
     /**
      * 提问时间

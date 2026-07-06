@@ -31,6 +31,19 @@
 
       <div class="post-body">{{ post.content }}</div>
 
+      <div v-if="postImages.length > 0" class="post-gallery">
+        <a
+          v-for="(imageUrl, imageIndex) in postImages"
+          :key="`${imageUrl}-${imageIndex}`"
+          :href="imageUrl"
+          target="_blank"
+          rel="noopener"
+          class="post-gallery__item"
+        >
+          <img :src="imageUrl" :alt="`${post.title} 图片 ${imageIndex + 1}`" />
+        </a>
+      </div>
+
       <footer class="post-footer">
         <button
           class="post-footer__action"
@@ -230,6 +243,7 @@ const replyingTo = ref<number | null>(null)
 const submitting = ref(false)
 const commentInputRef = ref<HTMLElement | null>(null)
 const expandedReplies = ref<Set<number>>(new Set())
+const postImages = computed(() => (post.value?.imageUrls || []).filter(Boolean))
 
 const expandReplies = (commentId: number) => {
   expandedReplies.value = new Set([...expandedReplies.value, commentId])
@@ -570,6 +584,34 @@ onMounted(() => {
   line-height: 1.8;
   margin-bottom: 28px;
   white-space: pre-wrap;
+}
+
+.post-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 28px;
+
+  &__item {
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--bg-page);
+    display: block;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform var(--transition);
+    }
+
+    &:hover img {
+      transform: scale(1.03);
+    }
+  }
 }
 
 .post-footer {

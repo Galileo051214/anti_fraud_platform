@@ -3,14 +3,15 @@ package com.anti.service.impl;
 import com.anti.common.BusinessException;
 import com.anti.entity.QAConversation;
 import com.anti.entity.vo.ChatVO;
+import com.anti.entity.vo.SourceVO;
 import com.anti.entity.vo.SessionVO;
 import com.anti.entity.vo.TokenStatsVO;
 import com.anti.mapper.QAConversationMapper;
+import com.anti.service.AntiFraudAgentService;
 import com.anti.service.QAConversationService;
-import com.anti.util.AntiFraudPromptTemplate;
-import com.anti.util.DeepSeekClient;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import cn.hutool.json.JSONUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,16 +35,22 @@ public class QAConversationServiceImpl extends ServiceImpl<QAConversationMapper,
     private static final Pattern SESSION_ID_PATTERN = Pattern.compile("^session_(\\d+)_(\\d+)$");
 
     private final QAConversationMapper qaConversationMapper;
-    private final DeepSeekClient deepSeekClient;
+    private final AntiFraudAgentService antiFraudAgentService;
 
-    public QAConversationServiceImpl(QAConversationMapper qaConversationMapper, DeepSeekClient deepSeekClient) {
+    public QAConversationServiceImpl(QAConversationMapper qaConversationMapper, AntiFraudAgentService antiFraudAgentService) {
         this.qaConversationMapper = qaConversationMapper;
-        this.deepSeekClient = deepSeekClient;
+        this.antiFraudAgentService = antiFraudAgentService;
     }
 
     @Override
     @Transactional
     public ChatVO askQuestion(String question, String sessionId, Long userId) {
+        return askQuestion(question, sessionId, userId, AntiFraudAgentService.ANSWER_TYPE_AUTO);
+    }
+
+    @Override
+    @Transactional
+    public ChatVO askQuestion(String question, String sessionId, Long userId, String answerType) {
         validateUserId(userId);
         String normalizedQuestion = normalizeQuestion(question);
         String normalizedSessionId = normalizeSessionId(sessionId, userId, true);
@@ -54,41 +61,30 @@ public class QAConversationServiceImpl extends ServiceImpl<QAConversationMapper,
         }
 
         // 获取历史对话
-        List<QAConversation> history = safeList(qaConversationMapper.findByUserIdAndSessionId(userId, normalizedSessionId));
-        List<QAConversation> pairedHistory = history.stream()
-                .filter(h -> hasText(h.getQuestion()) && hasText(h.getAnswer()))
-                .collect(Collectors.toList());
-        int fromIndex = Math.max(0, pairedHistory.size() - MAX_HISTORY_PAIRS);
-        List<String[]> historyMessages = pairedHistory.subList(fromIndex, pairedHistory.size()).stream()
-                .flatMap(h -> {
-                    List<String[]> messages = new ArrayList<>();
-                    messages.add(new String[]{"user", h.getQuestion().trim()});
-                    messages.add(new String[]{"assistant", h.getAnswer().trim()});
-                    return messages.stream();
-                })
-                .collect(Collectors.toList());
+        List<String[]> historyMessages = buildHistoryMessages(userId, normalizedSessionId);
 
-        // 构建prompt
-        String systemPrompt = AntiFraudPromptTemplate.getSystemPrompt();
-
-        // 调用DeepSeek API
-        DeepSeekClient.DeepSeekResponse response = callDeepSeekSafely(systemPrompt, normalizedQuestion, historyMessages);
+        AntiFraudAgentService.AgentAnswer agentAnswer = antiFraudAgentService.answer(
+                normalizedQuestion,
+                historyMessages,
+                normalizeAnswerType(answerType)
+        );
 
         // 构建结果
         ChatVO chatVO = new ChatVO();
         chatVO.setSessionId(normalizedSessionId);
         chatVO.setQuestion(normalizedQuestion);
-
-        if (response.isSuccess() && hasText(response.getContent())) {
-            chatVO.setAnswer(response.getContent().trim());
-            chatVO.setTokensUsed(response.getTotalTokens());
-            chatVO.setFallback(false);
-        } else {
-            chatVO.setAnswer(buildFallbackAnswer(response.getErrorMessage()));
-            chatVO.setTokensUsed(0);
-            chatVO.setFallback(true);
-        }
-        chatVO.setCreateTime(LocalDateTime.now());
+        chatVO.setAnswer(agentAnswer.getAnswer());
+        chatVO.setReasoning(agentAnswer.getReasoning());
+        chatVO.setTokensUsed(defaultInt(agentAnswer.getTokensUsed()));
+        chatVO.setFallback(Boolean.TRUE.equals(agentAnswer.getFallback()));
+        chatVO.setFallbackReason(agentAnswer.getFallbackReason());
+        chatVO.setAnswerType(defaultText(agentAnswer.getAnswerType(), AntiFraudAgentService.ANSWER_TYPE_QA));
+        chatVO.setSearchProvider(agentAnswer.getSearchProvider());
+        chatVO.setRiskLevel(defaultText(agentAnswer.getRiskLevel(), "low"));
+        chatVO.setSources(safeSources(agentAnswer.getSources()));
+        chatVO.setRetrievedAt(agentAnswer.getRetrievedAt());
+        LocalDateTime now = LocalDateTime.now();
+        chatVO.setCreateTime(now);
 
         // 保存问答记录
         QAConversation conversation = new QAConversation();
@@ -96,13 +92,73 @@ public class QAConversationServiceImpl extends ServiceImpl<QAConversationMapper,
         conversation.setSessionId(normalizedSessionId);
         conversation.setQuestion(normalizedQuestion);
         conversation.setAnswer(chatVO.getAnswer());
-        conversation.setModel(deepSeekClient.getModel());
+        conversation.setModel(antiFraudAgentService.getModelName());
         conversation.setTokensUsed(chatVO.getTokensUsed());
         conversation.setFeedback(null);
-        conversation.setCreateTime(LocalDateTime.now());
+        conversation.setAnswerType(chatVO.getAnswerType());
+        conversation.setRiskLevel(chatVO.getRiskLevel());
+        conversation.setSourcesJson(toSourcesJson(chatVO.getSources()));
+        conversation.setFallback(chatVO.getFallback());
+        conversation.setRetrievedAt(chatVO.getRetrievedAt());
+        conversation.setCreateTime(now);
         qaConversationMapper.insert(conversation);
 
         return chatVO;
+    }
+
+    @Override
+    public void askQuestionStream(String question,
+                                  String sessionId,
+                                  Long userId,
+                                  String answerType,
+                                  ChatStreamHandler handler) {
+        validateUserId(userId);
+        String normalizedQuestion = normalizeQuestion(question);
+        String normalizedSessionId = normalizeSessionId(sessionId, userId, true);
+
+        if (normalizedSessionId == null) {
+            normalizedSessionId = createSession(userId);
+        }
+
+        List<String[]> historyMessages = buildHistoryMessages(userId, normalizedSessionId);
+        LocalDateTime now = LocalDateTime.now();
+        String finalSessionId = normalizedSessionId;
+
+        AntiFraudAgentService.AgentAnswer agentAnswer = antiFraudAgentService.answerStream(
+                normalizedQuestion,
+                historyMessages,
+                normalizeAnswerType(answerType),
+                new AntiFraudAgentService.AgentStreamHandler() {
+                    @Override
+                    public void onMetadata(AntiFraudAgentService.AgentAnswer metadata) {
+                        if (handler != null) {
+                            ChatVO meta = buildChatVO(normalizedQuestion, finalSessionId, metadata, now);
+                            meta.setAnswer("");
+                            handler.onMetadata(meta);
+                        }
+                    }
+
+                    @Override
+                    public void onReasoningDelta(String delta) {
+                        if (handler != null) {
+                            handler.onReasoningDelta(delta);
+                        }
+                    }
+
+                    @Override
+                    public void onContentDelta(String delta) {
+                        if (handler != null) {
+                            handler.onContentDelta(delta);
+                        }
+                    }
+                }
+        );
+
+        ChatVO chatVO = buildChatVO(normalizedQuestion, normalizedSessionId, agentAnswer, now);
+        saveConversation(userId, chatVO);
+        if (handler != null) {
+            handler.onComplete(chatVO);
+        }
     }
 
     @Override
@@ -120,7 +176,11 @@ public class QAConversationServiceImpl extends ServiceImpl<QAConversationMapper,
             vo.setQuestion(c.getQuestion());
             vo.setAnswer(c.getAnswer());
             vo.setTokensUsed(c.getTokensUsed());
-            vo.setFallback(false);
+            vo.setFallback(Boolean.TRUE.equals(c.getFallback()));
+            vo.setAnswerType(defaultText(c.getAnswerType(), AntiFraudAgentService.ANSWER_TYPE_QA));
+            vo.setRiskLevel(defaultText(c.getRiskLevel(), "low"));
+            vo.setSources(fromSourcesJson(c.getSourcesJson()));
+            vo.setRetrievedAt(c.getRetrievedAt());
             vo.setCreateTime(c.getCreateTime());
             return vo;
         }).collect(Collectors.toList());
@@ -241,18 +301,57 @@ public class QAConversationServiceImpl extends ServiceImpl<QAConversationMapper,
         return "session_" + userId + "_" + System.currentTimeMillis();
     }
 
-    private DeepSeekClient.DeepSeekResponse callDeepSeekSafely(String systemPrompt,
-                                                               String normalizedQuestion,
-                                                               List<String[]> historyMessages) {
-        try {
-            return deepSeekClient.chat(systemPrompt, normalizedQuestion, historyMessages);
-        } catch (Exception e) {
-            log.warn("调用AI服务失败，已降级为本地提示: {}", e.getClass().getSimpleName());
-            DeepSeekClient.DeepSeekResponse response = new DeepSeekClient.DeepSeekResponse();
-            response.setSuccess(false);
-            response.setErrorMessage("AI_SERVICE_UNAVAILABLE");
-            return response;
-        }
+    private List<String[]> buildHistoryMessages(Long userId, String normalizedSessionId) {
+        List<QAConversation> history = safeList(qaConversationMapper.findByUserIdAndSessionId(userId, normalizedSessionId));
+        List<QAConversation> pairedHistory = history.stream()
+                .filter(h -> hasText(h.getQuestion()) && hasText(h.getAnswer()))
+                .collect(Collectors.toList());
+        int fromIndex = Math.max(0, pairedHistory.size() - MAX_HISTORY_PAIRS);
+        return pairedHistory.subList(fromIndex, pairedHistory.size()).stream()
+                .flatMap(h -> {
+                    List<String[]> messages = new ArrayList<>();
+                    messages.add(new String[]{"user", h.getQuestion().trim()});
+                    messages.add(new String[]{"assistant", h.getAnswer().trim()});
+                    return messages.stream();
+                })
+                .collect(Collectors.toList());
+    }
+
+    private ChatVO buildChatVO(String question,
+                               String normalizedSessionId,
+                               AntiFraudAgentService.AgentAnswer agentAnswer,
+                               LocalDateTime createTime) {
+        ChatVO chatVO = new ChatVO();
+        chatVO.setSessionId(normalizedSessionId);
+        chatVO.setQuestion(question);
+        chatVO.setAnswer(defaultText(agentAnswer.getAnswer(), ""));
+        chatVO.setReasoning(agentAnswer.getReasoning());
+        chatVO.setTokensUsed(defaultInt(agentAnswer.getTokensUsed()));
+        chatVO.setFallback(Boolean.TRUE.equals(agentAnswer.getFallback()));
+        chatVO.setAnswerType(defaultText(agentAnswer.getAnswerType(), AntiFraudAgentService.ANSWER_TYPE_QA));
+        chatVO.setRiskLevel(defaultText(agentAnswer.getRiskLevel(), "low"));
+        chatVO.setSources(safeSources(agentAnswer.getSources()));
+        chatVO.setRetrievedAt(agentAnswer.getRetrievedAt());
+        chatVO.setCreateTime(createTime);
+        return chatVO;
+    }
+
+    private void saveConversation(Long userId, ChatVO chatVO) {
+        QAConversation conversation = new QAConversation();
+        conversation.setUserId(userId);
+        conversation.setSessionId(chatVO.getSessionId());
+        conversation.setQuestion(chatVO.getQuestion());
+        conversation.setAnswer(chatVO.getAnswer());
+        conversation.setModel(antiFraudAgentService.getModelName());
+        conversation.setTokensUsed(chatVO.getTokensUsed());
+        conversation.setFeedback(null);
+        conversation.setAnswerType(chatVO.getAnswerType());
+        conversation.setRiskLevel(chatVO.getRiskLevel());
+        conversation.setSourcesJson(toSourcesJson(chatVO.getSources()));
+        conversation.setFallback(chatVO.getFallback());
+        conversation.setRetrievedAt(chatVO.getRetrievedAt());
+        conversation.setCreateTime(chatVO.getCreateTime());
+        qaConversationMapper.insert(conversation);
     }
 
     private String normalizeQuestion(String question) {
@@ -297,6 +396,19 @@ public class QAConversationServiceImpl extends ServiceImpl<QAConversationMapper,
         return normalizedSessionId;
     }
 
+    private String normalizeAnswerType(String answerType) {
+        if (!hasText(answerType)) {
+            return AntiFraudAgentService.ANSWER_TYPE_AUTO;
+        }
+        String normalized = answerType.trim();
+        if (AntiFraudAgentService.ANSWER_TYPE_AUTO.equals(normalized)
+                || AntiFraudAgentService.ANSWER_TYPE_QA.equals(normalized)
+                || AntiFraudAgentService.ANSWER_TYPE_LATEST_REPORT.equals(normalized)) {
+            return normalized;
+        }
+        throw new BusinessException(400, "回答类型只能是auto、qa或latest_report");
+    }
+
     private void validateUserId(Long userId) {
         if (userId == null || userId <= 0) {
             throw new BusinessException(401, "请先登录");
@@ -313,6 +425,38 @@ public class QAConversationServiceImpl extends ServiceImpl<QAConversationMapper,
 
     private int defaultInt(Integer value) {
         return value == null ? 0 : value;
+    }
+
+    private String defaultText(String value, String fallback) {
+        return hasText(value) ? value : fallback;
+    }
+
+    private List<SourceVO> safeSources(List<SourceVO> sources) {
+        return sources == null ? Collections.emptyList() : sources;
+    }
+
+    private String toSourcesJson(List<SourceVO> sources) {
+        if (sources == null || sources.isEmpty()) {
+            return null;
+        }
+        try {
+            return JSONUtil.toJsonStr(sources);
+        } catch (Exception e) {
+            log.warn("检索来源序列化失败: {}", e.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    private List<SourceVO> fromSourcesJson(String sourcesJson) {
+        if (!hasText(sourcesJson)) {
+            return Collections.emptyList();
+        }
+        try {
+            return JSONUtil.toList(sourcesJson, SourceVO.class);
+        } catch (Exception e) {
+            log.warn("检索来源解析失败: {}", e.getClass().getSimpleName());
+            return Collections.emptyList();
+        }
     }
 
     private boolean isOwnedSessionId(String sessionId, Long userId) {
@@ -337,10 +481,4 @@ public class QAConversationServiceImpl extends ServiceImpl<QAConversationMapper,
         return value.length() > maxLength ? value.substring(0, maxLength) + "..." : value;
     }
 
-    private String buildFallbackAnswer(String errorMessage) {
-        if ("AI_API_KEY_MISSING".equals(errorMessage)) {
-            return "AI服务尚未配置，请联系管理员配置后再使用。";
-        }
-        return "AI服务暂时不可用，请稍后再试。你也可以先查看资讯、案例和闯关内容获取反诈建议。";
-    }
 }

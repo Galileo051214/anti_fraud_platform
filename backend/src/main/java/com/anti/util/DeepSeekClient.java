@@ -10,6 +10,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.*;
 
 /**
@@ -56,43 +62,7 @@ public class DeepSeekClient {
         }
 
         try {
-            JSONObject requestBody = new JSONObject();
-            requestBody.set("model", model);
-            requestBody.set("max_tokens", maxTokens);
-            requestBody.set("temperature", temperature);
-
-            JSONArray messages = new JSONArray();
-
-            // 添加系统提示词
-            JSONObject systemMsg = new JSONObject();
-            systemMsg.set("role", "system");
-            systemMsg.set("content", systemPrompt);
-            messages.add(systemMsg);
-
-            // 添加历史对话
-            if (history != null && !history.isEmpty()) {
-                for (String[] msg : history) {
-                    if (msg == null || msg.length < 2 || msg[0] == null || msg[1] == null || msg[1].isBlank()) {
-                        continue;
-                    }
-                    String role = msg[0].trim();
-                    if (!"user".equals(role) && !"assistant".equals(role)) {
-                        continue;
-                    }
-                    JSONObject historyMsg = new JSONObject();
-                    historyMsg.set("role", role);
-                    historyMsg.set("content", msg[1]);
-                    messages.add(historyMsg);
-                }
-            }
-
-            // 添加当前用户消息
-            JSONObject userMsg = new JSONObject();
-            userMsg.set("role", "user");
-            userMsg.set("content", userMessage);
-            messages.add(userMsg);
-
-            requestBody.set("messages", messages);
+            JSONObject requestBody = buildRequestBody(systemPrompt, userMessage, history, false);
 
             // 发送请求
             Map<String, String> headers = new HashMap<>();
@@ -153,8 +123,187 @@ public class DeepSeekClient {
         return model;
     }
 
+    public DeepSeekResponse chatStream(String systemPrompt,
+                                       String userMessage,
+                                       List<String[]> history,
+                                       StreamHandler handler) {
+        DeepSeekResponse response = new DeepSeekResponse();
+
+        if (apiKey == null || apiKey.isBlank() || "填自己的apikey".equals(apiKey.trim())) {
+            response.setSuccess(false);
+            response.setErrorMessage("AI_API_KEY_MISSING");
+            return response;
+        }
+
+        StringBuilder content = new StringBuilder();
+        StringBuilder reasoning = new StringBuilder();
+
+        try {
+            JSONObject requestBody = buildRequestBody(systemPrompt, userMessage, history, true);
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(URI.create(apiUrl))
+                    .timeout(Duration.ofMillis(resolveTimeoutMs()))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + apiKey)
+                    .POST(java.net.http.HttpRequest.BodyPublishers.ofString(requestBody.toString()))
+                    .build();
+
+            java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofMillis(resolveTimeoutMs()))
+                    .build();
+            java.net.http.HttpResponse<InputStream> httpResponse = client.send(
+                    request,
+                    java.net.http.HttpResponse.BodyHandlers.ofInputStream()
+            );
+
+            if (httpResponse.statusCode() < 200 || httpResponse.statusCode() >= 300) {
+                logger.warn("DeepSeek stream API returned non-success status: {}", httpResponse.statusCode());
+                response.setSuccess(false);
+                response.setErrorMessage("AI_SERVICE_UNAVAILABLE");
+                return response;
+            }
+
+            try (InputStream stream = httpResponse.body();
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    parseStreamLine(line, content, reasoning, response, handler);
+                }
+            }
+
+            response.setContent(content.toString());
+            response.setReasoningContent(reasoning.toString());
+            response.setSuccess(content.length() > 0 || reasoning.length() > 0);
+            if (!response.isSuccess()) {
+                response.setErrorMessage("AI_SERVICE_UNAVAILABLE");
+            }
+        } catch (Exception e) {
+            logger.warn("流式调用DeepSeek API失败: {}", e.getClass().getSimpleName());
+            response.setContent(content.toString());
+            response.setReasoningContent(reasoning.toString());
+            response.setSuccess(content.length() > 0);
+            response.setErrorMessage(response.isSuccess() ? null : "AI_SERVICE_UNAVAILABLE");
+        }
+
+        return response;
+    }
+
     private int resolveTimeoutMs() {
         return Math.max(1000, Math.min(timeoutMs, 30000));
+    }
+
+    private JSONObject buildRequestBody(String systemPrompt, String userMessage, List<String[]> history, boolean stream) {
+        JSONObject requestBody = new JSONObject();
+        requestBody.set("model", model);
+        requestBody.set("max_tokens", maxTokens);
+        requestBody.set("temperature", temperature);
+        if (stream) {
+            requestBody.set("stream", true);
+            JSONObject streamOptions = new JSONObject();
+            streamOptions.set("include_usage", true);
+            requestBody.set("stream_options", streamOptions);
+        }
+
+        JSONArray messages = new JSONArray();
+        JSONObject systemMsg = new JSONObject();
+        systemMsg.set("role", "system");
+        systemMsg.set("content", systemPrompt);
+        messages.add(systemMsg);
+
+        if (history != null && !history.isEmpty()) {
+            for (String[] msg : history) {
+                if (msg == null || msg.length < 2 || msg[0] == null || msg[1] == null || msg[1].isBlank()) {
+                    continue;
+                }
+                String role = msg[0].trim();
+                if (!"user".equals(role) && !"assistant".equals(role)) {
+                    continue;
+                }
+                JSONObject historyMsg = new JSONObject();
+                historyMsg.set("role", role);
+                historyMsg.set("content", msg[1]);
+                messages.add(historyMsg);
+            }
+        }
+
+        JSONObject userMsg = new JSONObject();
+        userMsg.set("role", "user");
+        userMsg.set("content", userMessage);
+        messages.add(userMsg);
+
+        requestBody.set("messages", messages);
+        return requestBody;
+    }
+
+    private void parseStreamLine(String line,
+                                 StringBuilder content,
+                                 StringBuilder reasoning,
+                                 DeepSeekResponse response,
+                                 StreamHandler handler) {
+        if (line == null) {
+            return;
+        }
+        String trimmed = line.trim();
+        if (trimmed.isEmpty() || trimmed.startsWith(":")) {
+            return;
+        }
+        if (!trimmed.startsWith("data:")) {
+            return;
+        }
+
+        String data = trimmed.substring("data:".length()).trim();
+        if (data.isEmpty() || "[DONE]".equals(data)) {
+            return;
+        }
+
+        try {
+            JSONObject chunk = JSONUtil.parseObj(data);
+            JSONObject usage = chunk.getJSONObject("usage");
+            if (usage != null) {
+                response.setPromptTokens(usage.getInt("prompt_tokens", response.getPromptTokens()));
+                response.setCompletionTokens(usage.getInt("completion_tokens", response.getCompletionTokens()));
+                response.setTotalTokens(usage.getInt("total_tokens", response.getTotalTokens()));
+            }
+
+            JSONArray choices = chunk.getJSONArray("choices");
+            if (choices == null || choices.isEmpty()) {
+                return;
+            }
+            JSONObject choice = choices.getJSONObject(0);
+            JSONObject delta = choice == null ? null : choice.getJSONObject("delta");
+            if (delta == null) {
+                return;
+            }
+
+            String reasoningDelta = firstText(delta.getStr("reasoning_content"), delta.getStr("reasoning"));
+            if (hasText(reasoningDelta)) {
+                reasoning.append(reasoningDelta);
+                if (handler != null) {
+                    handler.onReasoningDelta(reasoningDelta);
+                }
+            }
+
+            String contentDelta = delta.getStr("content");
+            if (hasText(contentDelta)) {
+                content.append(contentDelta);
+                if (handler != null) {
+                    handler.onContentDelta(contentDelta);
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("Ignore invalid DeepSeek stream chunk");
+        }
+    }
+
+    private String firstText(String first, String second) {
+        if (hasText(first)) {
+            return first;
+        }
+        return hasText(second) ? second : "";
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     /**
@@ -164,12 +313,21 @@ public class DeepSeekClient {
         return chat(systemPrompt, userMessage, null);
     }
 
+    public interface StreamHandler {
+        default void onReasoningDelta(String delta) {
+        }
+
+        default void onContentDelta(String delta) {
+        }
+    }
+
     /**
      * DeepSeek响应结果封装
      */
     public static class DeepSeekResponse {
         private boolean success;
         private String content;
+        private String reasoningContent;
         private String errorMessage;
         private int promptTokens;
         private int completionTokens;
@@ -189,6 +347,14 @@ public class DeepSeekClient {
 
         public void setContent(String content) {
             this.content = content;
+        }
+
+        public String getReasoningContent() {
+            return reasoningContent;
+        }
+
+        public void setReasoningContent(String reasoningContent) {
+            this.reasoningContent = reasoningContent;
         }
 
         public String getErrorMessage() {
