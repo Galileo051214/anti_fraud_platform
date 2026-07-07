@@ -36,7 +36,7 @@
             <img :src="news.coverImage" :alt="news.title" />
           </div>
 
-          <article class="news-detail__body">{{ news.content }}</article>
+          <article class="news-detail__body" v-html="news.content"></article>
 
           <footer class="news-detail__footer">
             <button
@@ -277,8 +277,51 @@ onUnmounted(() => {
     font-size: 16px;
     line-height: 1.8;
     color: var(--text-secondary);
-    white-space: pre-wrap;
     word-break: break-word;
+
+    :deep(h3) {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 18px 0 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid hsl(220, 14%, 90%);
+    }
+
+    :deep(h4) {
+      font-size: 15px;
+      font-weight: 600;
+      color: #409eff;
+      margin: 14px 0 6px;
+    }
+
+    :deep(strong) {
+      font-weight: 600;
+    }
+
+    :deep(p) {
+      margin-bottom: 12px;
+      line-height: 1.8;
+    }
+
+    :deep(ul),
+    :deep(ol) {
+      margin: 10px 0 10px 20px;
+      padding-left: 4px;
+    }
+
+    :deep(li) {
+      margin-bottom: 6px;
+    }
+
+    :deep(code) {
+      background: hsl(220, 20%, 97%);
+      color: #409eff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: 'Monaco', 'Menlo', monospace;
+    }
   }
 
   &__footer {

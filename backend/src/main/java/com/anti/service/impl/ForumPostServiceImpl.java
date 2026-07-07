@@ -1,6 +1,7 @@
 package com.anti.service.impl;
 
 import com.anti.common.BusinessException;
+import com.anti.common.HtmlSanitizer;
 import com.anti.entity.*;
 import com.anti.entity.dto.CreatePostRequest;
 import com.anti.entity.dto.UpdatePostRequest;
@@ -115,7 +116,11 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
     @Transactional
     public PostVO createPost(CreatePostRequest request, Long authorId) {
         String title = requireText(request.getTitle(), "帖子标题", 100);
-        String content = requireText(request.getContent(), "帖子内容", 10000);
+        String rawContent = requireText(request.getContent(), "帖子内容", 10000);
+        String content = HtmlSanitizer.sanitizePostContent(rawContent);
+        if (content.isEmpty()) {
+            throw new BusinessException(400, "帖子内容无效（仅包含非法标签）");
+        }
         String postType = normalizePostType(request.getPostType(), false);
 
         ForumPost post = new ForumPost();
@@ -169,7 +174,13 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
         }
 
         if (request.getTitle() != null) post.setTitle(requireText(request.getTitle(), "帖子标题", 100));
-        if (request.getContent() != null) post.setContent(requireText(request.getContent(), "帖子内容", 10000));
+        if (request.getContent() != null) {
+            String sanitized = HtmlSanitizer.sanitizePostContent(requireText(request.getContent(), "帖子内容", 10000));
+            if (sanitized.isEmpty()) {
+                throw new BusinessException(400, "帖子内容无效（仅包含非法标签）");
+            }
+            post.setContent(sanitized);
+        }
         if (request.getPostType() != null) post.setPostType(normalizePostType(request.getPostType(), false));
         if (request.getTagIds() != null) post.setTagIds(request.getTagIds());
         if (request.getImageUrls() != null) post.setImageUrls(normalizeImageUrls(request.getImageUrls()));
@@ -464,6 +475,21 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
         return values == null ? Collections.emptyList() : values;
     }
 
+    private List<Long> convertTagIds(List<?> raw) {
+        if (raw == null) {
+            return null;
+        }
+        List<Long> result = new ArrayList<>(raw.size());
+        for (Object o : raw) {
+            if (o instanceof Long) {
+                result.add((Long) o);
+            } else if (o instanceof Number) {
+                result.add(((Number) o).longValue());
+            }
+        }
+        return result;
+    }
+
     private List<CommentVO> buildCommentTree(Long parentId, Map<Long, List<CommentVO>> groupedComments) {
         List<CommentVO> tree = groupedComments.getOrDefault(parentId, Collections.emptyList());
         for (CommentVO comment : tree) {
@@ -490,7 +516,7 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
         vo.setTitle(post.getTitle());
         vo.setContent(post.getContent());
         vo.setPostType(post.getPostType());
-        vo.setTagIds(post.getTagIds());
+        vo.setTagIds(convertTagIds(post.getTagIds()));
         vo.setImageUrls(safeList(post.getImageUrls()));
         vo.setViewCount(post.getViewCount());
         vo.setLikeCount(post.getLikeCount());

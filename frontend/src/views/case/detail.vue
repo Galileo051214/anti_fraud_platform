@@ -624,7 +624,6 @@ watch(
       color: #374151;
     }
     :deep(strong) {
-      color: #dc2626;
       font-weight: 600;
     }
     :deep(ul), :deep(ol) {

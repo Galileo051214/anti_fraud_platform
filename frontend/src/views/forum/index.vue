@@ -82,7 +82,7 @@
         </div>
 
         <h3 class="post-card__title">{{ post.title }}</h3>
-        <p class="post-card__content">{{ post.content }}</p>
+        <p class="post-card__content" v-html="post.content"></p>
 
         <div v-if="getPostImages(post).length > 0" class="post-card__thumbs">
           <div

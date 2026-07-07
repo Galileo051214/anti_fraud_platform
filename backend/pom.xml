@@ -129,6 +129,13 @@
             <version>5.3</version>
         </dependency>
 
+        <!-- Jsoup HTML 净化 -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.17.2</version>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

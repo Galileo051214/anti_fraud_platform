@@ -29,7 +29,7 @@
 
       <h2 class="post-title">{{ post.title }}</h2>
 
-      <div class="post-body">{{ post.content }}</div>
+      <div class="post-body" v-html="post.content"></div>
 
       <div v-if="postImages.length > 0" class="post-gallery">
         <a
@@ -115,7 +115,7 @@
               </span>
               <span class="comment-item__time">{{ formatTime(comment.createTime) }}</span>
             </header>
-            <p class="comment-item__text">{{ comment.content }}</p>
+            <p class="comment-item__text" v-html="comment.content"></p>
             <div class="comment-item__actions">
               <button
                 class="comment-item__action"
@@ -187,7 +187,7 @@
                     </span>
                     <span class="comment-item__time">{{ formatTime(child.createTime) }}</span>
                   </header>
-                  <p class="comment-item__text">{{ child.content }}</p>
+                  <p class="comment-item__text" v-html="child.content"></p>
                   <div class="comment-item__actions">
                     <button
                       class="comment-item__action"
@@ -583,7 +583,69 @@ onMounted(() => {
   color: var(--text-secondary);
   line-height: 1.8;
   margin-bottom: 28px;
-  white-space: pre-wrap;
+
+  :deep(h1),
+  :deep(h2),
+  :deep(h3) {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 18px 0 8px;
+  }
+
+  :deep(h3) {
+    font-size: 17px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid hsl(220, 14%, 90%);
+  }
+
+  :deep(h4) {
+    font-size: 15px;
+    font-weight: 600;
+    color: #409eff;
+    margin: 14px 0 6px;
+  }
+
+  :deep(strong) {
+    font-weight: 600;
+  }
+
+  :deep(p) {
+    margin-bottom: 12px;
+    line-height: 1.8;
+  }
+
+  :deep(ul),
+  :deep(ol) {
+    margin: 10px 0 10px 20px;
+    padding-left: 4px;
+  }
+
+  :deep(li) {
+    margin-bottom: 6px;
+  }
+
+  :deep(code) {
+    background: hsl(220, 20%, 97%);
+    color: #409eff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: 'Monaco', 'Menlo', monospace;
+  }
+
+  :deep(blockquote) {
+    margin: 12px 0;
+    padding: 8px 16px;
+    border-left: 3px solid #409eff;
+    background: hsl(220, 20%, 98%);
+    color: var(--text-secondary);
+    font-style: italic;
+  }
+
+  :deep(a) {
+    color: #409eff;
+    text-decoration: underline;
+  }
 }
 
 .post-gallery {
@@ -837,6 +899,27 @@ onMounted(() => {
     line-height: 1.6;
     margin: 0 0 10px;
     word-break: break-word;
+
+    :deep(a) {
+      color: #409eff;
+      text-decoration: underline;
+    }
+
+    :deep(strong), :deep(b) {
+      font-weight: 600;
+    }
+
+    :deep(em), :deep(i) {
+      font-style: italic;
+    }
+
+    :deep(u) {
+      text-decoration: underline;
+    }
+
+    :deep(s) {
+      text-decoration: line-through;
+    }
   }
 
   &__actions {

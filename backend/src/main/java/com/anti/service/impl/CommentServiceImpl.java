@@ -1,6 +1,7 @@
 package com.anti.service.impl;
 
 import com.anti.common.BusinessException;
+import com.anti.common.HtmlSanitizer;
 import com.anti.entity.Comment;
 import com.anti.entity.CommentLike;
 import com.anti.entity.ForumPost;
@@ -188,6 +189,7 @@ public class CommentServiceImpl implements CommentService {
 
     private String requireContent(String content) {
         String normalized = content == null ? "" : content.trim();
+        normalized = HtmlSanitizer.sanitizeCommentContent(normalized);
         if (normalized.isEmpty()) {
             throw new BusinessException(400, "评论内容不能为空");
         }
